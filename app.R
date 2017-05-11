@@ -462,14 +462,30 @@ server <- function(input, output, session) {
 	
 	output$RGBplot <- renderPlot({
 		rgbTif =brick(tifsFull[grep(input$filepick,tifsFull)]) 
-		
+		# world view has different band assignments
 		if(input$falseCol == "321"){
-			plotRGB(rgbTif,
-							r=3,g=2,b=1, stretch = 'lin')
+			if(grepl("WV02|WV03",input$filepick)){
+			  plotRGB(rgbTif,
+							  r=5,g=3,b=2, stretch = 'lin')
+			}else if(grepl("WV01",input$filepick)){
+			  plotRGB(rgbTif,
+			          r=1,g=1,b=1, stretch = 'lin')
+			}else{
+			  plotRGB(rgbTif,
+			          r=3,g=2,b=1, stretch = 'lin')
+			}
 		}
 		if(input$falseCol == "432"){
-			plotRGB(rgbTif,
-							r=4,g=3,b=2, stretch = 'lin')
+		  if(grepl("WV02|WV03",input$filepick)){
+		    plotRGB(rgbTif,
+		            r=7,g=5,b=3, stretch = 'lin')
+		  }else if(grepl("WV01",input$filepick)){
+		    plotRGB(rgbTif,
+		            r=1,g=1,b=1, stretch = 'lin')
+		  }else{
+		    plotRGB(rgbTif,
+		            r=4,g=3,b=2, stretch = 'lin')
+		  }
 		}
 		plot(spTransform(sampleShapes[inSamps[isolate(row$i)],],CRSobj = crs(rgbTif)), col=NA, border = "red", add=T)
 	})
@@ -487,7 +503,13 @@ server <- function(input, output, session) {
 		}
 		
 		rgbTif = crop(rgbTif, miniExt)
-		NDVI = brick(calc(rgbTif[[c(4,3)]], f_NDVI))
+		
+		if(grepl("WV02|WV03",input$filepick)){
+		  NDVI = brick(calc(rgbTif[[c(7,5)]], f_NDVI))
+		}else{
+		  NDVI = brick(calc(rgbTif[[c(4,3)]], f_NDVI))
+		}
+		
 
 		plotRGB(NDVI,
 						r=1,g=1,b=1, stretch="lin")
@@ -516,13 +538,30 @@ server <- function(input, output, session) {
 		
 		zoomTif = crop(zoomTif_str, miniExt)
 		
+		# world view has different band assignments
 		if(input$falseCol == "321"){
-			plotRGB(zoomTif,
-							r=3,g=2,b=1, stretch = 'lin')
+		  if(grepl("WV02|WV03",input$filepick)){
+		    plotRGB(zoomTif,
+		            r=5,g=3,b=2, stretch = 'lin')
+		  }else if(grepl("WV01",input$filepick)){
+		    plotRGB(zoomTif,
+		            r=1,g=1,b=1, stretch = 'lin')
+		  }else{
+		    plotRGB(zoomTif,
+		            r=3,g=2,b=1, stretch = 'lin')
+		  }
 		}
 		if(input$falseCol == "432"){
-			plotRGB(zoomTif,
-							r=4,g=3,b=2, stretch = 'lin')
+		  if(grepl("WV02|WV03",input$filepick)){
+		    plotRGB(zoomTif,
+		            r=7,g=5,b=3, stretch = 'lin')
+		  }else if(grepl("WV01",input$filepick)){
+		    plotRGB(zoomTif,
+		            r=1,g=1,b=1, stretch = 'lin')
+		  }else{
+		    plotRGB(zoomTif,
+		            r=4,g=3,b=2, stretch = 'lin')
+		  }
 		}
 		
 		plot(spTransform(sampleShapes[inSamps[isolate(row$i)],],CRSobj = crs(zoomTif)), col=NA, border = "red", add=T)
