@@ -14,12 +14,6 @@ library(rgdal)
 library(rgeos)
 library(data.table)
 library(ggplot2)
-# 
-# tifsFull = list.files("../stamps/074D_lc_1_samp/",
-# 											full.names=T,
-# 											pattern="full")
-# tifsHave = as.numeric(sapply(strsplit(tifsFull,"_"), "[[", 8))
-
 
 # Define UI for application that draws a histogram
 ui <- fluidPage(
@@ -37,7 +31,9 @@ ui <- fluidPage(
 	   			textOutput("diag"),
 	   			textOutput("aYear")
 	   		),
-	   		
+	   		fluidRow(
+	   		  uiOutput("tilepick")
+	   		),
 	   		fluidRow(
 	   			h3("What is the land cover type? Click one button from each row")
 	   		),
@@ -90,11 +86,21 @@ ui <- fluidPage(
 	   			p("WETLAND?"),
 	   			actionButton(inputId = "isWet",
 	   									 label = "Wetland"),
-	   			actionButton(inputId = "isSeasonallyWet",
-	   			             label = "Seasonally Wet"),
 	   			actionButton(inputId = "isDry",
 	   									 label = "Not Wetland")
 	   		),
+				fluidRow(
+				  hr(),
+				  p("LAND USE"),
+				  actionButton(inputId = "isUrban",
+				               label = "Urban"),
+				  actionButton(inputId = "isAgriculture",
+				               label = "Agriculture"),
+				  actionButton(inputId = "isPasture",
+				               label = "Pasture"),
+				  actionButton(inputId = "isTimber",
+				               label = "Timber")
+				),
 	   		fluidRow(
 	   			hr(),
 	   			tableOutput("trainingRow"),
@@ -172,19 +178,18 @@ ui <- fluidPage(
 
 server <- function(input, output, session) {
 
-	#setwd("F:/Dropbox/LCSC/ABoVE/buildTraining/buildTrainingDataABoVE")
-	#setwd("F:/Dropbox/LCSC/ABoVE/buildTraining/")
-  setwd("C:/Users/wanga/Dropbox/LCSC/ABoVE/buildTraining/")
+	setwd("F:/Dropbox/LCSC/ABoVE/buildTraining/")
+  #setwd("C:/Users/wanga/Dropbox/LCSC/ABoVE/buildTraining/")
   
-	tileSample = "Bh11v11"
-	tile = "sampleBh11v11"
-	tifPath = paste0("../../../ABoVE_samples/EOSD_",tileSample, "_sample")
-	shapePath = paste0('../../../ABoVE_samples/shapefiles/',tile)
+	tile = "Bh11v11"
+	#tile = "sampleBh11v11"
+	tifPath = paste0("../../../ABoVE_samples/EOSD_",input$tilepick, "_sample")
+	shapePath = paste0('../../../ABoVE_samples/shapefiles/_sample',input$tilepick)
 	
 	sampleShapes = readOGR(dsn = shapePath,
-												 layer = paste0("EOSD_",tileSample,"_sample"))
+												 layer = paste0("EOSD_",input$tilepick,"_sample"))
 	
-	LS_dat = fread(paste0("../../../ABoVE_samples/LS/",tileSample,"_LS_filtered.csv"))
+	LS_dat = fread(paste0("../../../ABoVE_samples/LS/",input$tilepick,"_LS_filtered.csv"))
 	
 	tifs		 = list.files(tifPath,
 												full.names=T,
@@ -219,6 +224,7 @@ server <- function(input, output, session) {
 																						 phenotype = 0,
 																						 density = 0,
 																						 wetlandFlag = 0,
+																						 landUse = 0,
 																						 year = NA,
 																						 skipped = 0,
 																						 whySkipped="")),
@@ -233,6 +239,7 @@ server <- function(input, output, session) {
 							phenotype = 0,
 							density = 0,
 							wetlandFlag = 0,
+							landUse = 0,
 							year = NA,
 							skipped = 0,
 							whySkipped=""),
@@ -240,24 +247,43 @@ server <- function(input, output, session) {
 	}
 	
 	inTifsFull = reactive({
-		#paste0("pp",inSamps[i],"_yd",sapply(strsplit(tifsFull[grep(paste0("pp",inSamps[i],"_"), tifsFull)], "_yd|\\.tif"),"[[",2))
-		
+	  # gather list of all images available for a sample		
 		vars = paste0(sapply(strsplit(tifsFull[grep(paste0("pp",inSamps[row$i],"_"), tifsFull)], "pp|sample/"),"[[",2),
 									"pp",
 									inSamps[row$i],
 									"_yd",
 									sapply(strsplit(tifsFull[grep(paste0("pp",inSamps[row$i],"_"), tifsFull)], "_yd|\\.tif|_mul|_pan|_min"),"[[",2))
-		#vars = 
-		
+
 		return(as.list(vars))
 	})
 
+	availableTiles = reactive({
+	  
+	  # generate list of available ABoVE tiles based on folder contents
+	  tileShapes = list.files("../../../ABoVE_samples/shapefiles")
+	  tileSamplesIn = list.files("../../../ABoVE_samples/",
+	                           pattern="EOSD")
+	  tileSamples = sapply(strsplit(tileSamplesIn, "_"), "[[",2)
+	  
+	  tileLSIn = list.files("../../../ABoVE_samples/LS",
+	                        pattern="filtered")
+	  tileLS = sapply(strsplit(tileLSIn,"_"), "[[",1)
+	})
+	
+	# pickers
+	
 	output$filepick = renderUI({
 		selectInput(inputId = "filepick",
 								label = "Select File",
 								choices = inTifsFull())
 	})
 	
+	output$tilepick = renderUI({
+	  selectInput(inputId = "tilepick",
+	              label = "Select Tile",
+	              choices = availableTiles())
+	})
+	
 		
 	########
 	########
@@ -268,16 +294,8 @@ server <- function(input, output, session) {
 	########
 	########
 	
-	#pp33_yd2003-123
-# 	# 
-    # theYear = observe(
-    # 	quote({
-    # 		as.numeric(substr(strsplit(input$filepick,"_yd")[[1]][2],1,4))
-    # 	}), quoted=T
-    # )
-    # 
+	# Determine the year the sample is being picked from 
 	output$aYear = renderText({
-		#theYear
 		as.numeric(substr(strsplit(input$filepick,"_yd")[[1]][2],1,4))
 	})
 
@@ -294,7 +312,8 @@ server <- function(input, output, session) {
 	 		lForm = switch(theRow$vegForm+1,"No Label","Moss","Grass","Shrub","Tree")
 	 		lPheno = switch(theRow$phenotype+1,"No Label", "Deciduous", "Evergreen","Mixed")
 	 		lDense = 	switch(theRow$density+1,"No Label","Sparse", "Open","Dense")
-	 		lWet = switch(theRow$wetlandFlag+1,"No Label","Not Wetland","Seasonally Wet" ,"Wetland")
+	 		lWet = switch(theRow$wetlandFlag+1,"No Label","Not Wetland","Wetland")
+	 		lUse = switch(theRow$landUse+1,"No Label","Urban","Agriculture" ,"Pasture", "Timber")
 	 		lYear = theRow$year
 
 	 lRow = data.frame(tile = "tileSample",
@@ -304,6 +323,7 @@ server <- function(input, output, session) {
 	 									 phenotype = lPheno,
 	 									 density = lDense,
 	 									 wetlandFlag = lWet,
+	 									 landUse = lUse,
 	 									 year = lYear,
 	 									 skipped = " ",
 	 									 whySkipped = " ")
@@ -312,9 +332,10 @@ server <- function(input, output, session) {
 	 },
 	 digits=0)
 	
+	 
+	# Record label, save, and move to next sample
 	observeEvent(input$save,
 							 {
-#							 	row$flags[row$i,"year"] = as.numeric(substr(strsplit(input$filepick,"_yd")[[1]][2],1,4))
 							 	write.csv(row$flags, dt, row.names=F)
 							 	row$i = row$i + 1
 							 	row$flags = rbind(row$flags, data.frame(tile=tileSample,
@@ -324,6 +345,7 @@ server <- function(input, output, session) {
 							 																					phenotype = 0,
 							 																					density = 0,
 							 																					wetlandFlag = 0,
+							 																					landUse = 0,
 							 																					year=NA,
 							 																					skipped = 0,
 							 																					whySkipped=""))
@@ -341,6 +363,7 @@ server <- function(input, output, session) {
 							 																					phenotype = 0,
 							 																					density = 0,
 							 																					wetlandFlag = 0,
+							 																					landUse = 0,
 							 																					year=NA,
 							 																					skipped = 0,
 							 																					whySkipped=""))
@@ -366,16 +389,6 @@ server <- function(input, output, session) {
 	             {
 	               row$flags[row$i,"surfaceType"]=4
 	             })
-	# observeEvent(input$isUrban,
-	# 						 {
-	# 						 	row$flags[row$i,"surfaceType"]=3
-	# 						 	row$flags[row$i,"surfaceType"]=1
-	# 						 })
-	# observeEvent(input$isAg,
-	# 						 {
-	# 						 	row$flags[row$i,"surfaceType"]=4
-	# 						 	row$flags[row$i,"surfaceType"]=1
-	# 						 })
 	observeEvent(input$isMoss,
 							 {
 							 	row$flags[row$i,"vegForm"]=1
@@ -415,13 +428,9 @@ server <- function(input, output, session) {
 							 {
 							 	row$flags[row$i,"wetlandFlag"]=1
 							 })
-	observeEvent(input$isSeasonallyWet,
-	             {
-	              row$flags[row$i,"wetlandFlag"]=2
-	             })
 	observeEvent(input$isWet,
 							 {
-							 	row$flags[row$i,"wetlandFlag"]=3
+							 	row$flags[row$i,"wetlandFlag"]=2
 							 })
 	observeEvent(input$DBF,
 							 {
@@ -438,11 +447,28 @@ server <- function(input, output, session) {
 							 	row$flags[row$i,"phenotype"]=3
 							 	row$flags[row$i,"surfaceType"]=3
 							 })
+	observeEvent(input$isUrban,
+	             {
+	               row$flags[row$i,"landUse"]=1
+	             })
+	observeEvent(input$isAgriculture,
+	             {
+	               row$flags[row$i,"landUse"]=2
+	             })
+	observeEvent(input$isPasture,
+	             {
+	               row$flags[row$i,"landUse"]=3
+	             })
+	observeEvent(input$isTimber,
+	             {
+	               row$flags[row$i,"landUse"]=4
+	             })
 	observeEvent(input$skipBox,
 							 {
 							 	row$flags[row$i,"whySkipped"]=input$skipBox
 							 	row$flags[row$i,"skipped"] = 1
 							 })
+
 	output$diag = renderText({
 		paste0("row$i = ",row$i," and nrow(row$flags) = ", nrow(row$flags))
 	})	
