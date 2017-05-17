@@ -131,7 +131,7 @@ ui <- fluidPage(
    		fluidRow( ## Landsat data display
    		  h3("Landsat data"),
    		  radioButtons(inputId = "LSband", label="LS Band", inline=T, 
-   		               choices = c("blue", "grn", "red", "nir", "swir1", "swir2", "bt", "ndvi", "nbr")),
+   		               choices = c("blue", "grn", "red", "nir", "swir1", "swir2", "bt", "ndvi", "nbr", "evi-nbr")),
    		  radioButtons(inputId = "LSplotType", label="Plot Type", inline=T, 
    		               choices = c("Years", "DoY")),
    		  plotOutput("LSplot", height=330)
@@ -228,7 +228,7 @@ server <- function(input, output, session) {
       tifsMin  = tifs[grepl("min",list.files(tifPath,
                                              full.names=T,
                                              pattern="tif"))]
-      dt = paste0(input$tilepick,"_trainingdt.csv")
+      dt = paste0("../buildTraining/",input$tilepick,"_trainingdt.csv")
       inSamps = sort(as.numeric(unique(sapply(strsplit(tifsFull,"_pp|_yd"), "[[", 2))))
                             
       return(list(sampleShapes=sampleShapes, LS_dat=LS_dat, tifsPan=tifsPan, tifsFull=tifsFull,tifsMin=tifsMin,dt=dt,inSamps=inSamps))
@@ -272,7 +272,7 @@ server <- function(input, output, session) {
  	# update row when tilepick happens
  	observeEvent(input$tilepick, {
  		if(!is.null(inData()) & !is.null(input$tilepick)){
- 			if(inData()$dt %in% list.files()){
+ 			if(inData()$dt %in% list.files("../buildTraining")){
  				row$flags = rbind(read.csv(inData()$dt), data.frame(tile=input$tilepick,
  																														samp = inData()$inSamps[nrow(read.csv(inData()$dt))+1],
  																														surfaceType = 0,
@@ -588,17 +588,72 @@ server <- function(input, output, session) {
             samp =inData()$inSamps[row$i]
             band = input$LSband
             bandToPlot =paste0(band,samp)
-            dt = data.table(date = strptime(inData()$LS_dat$date,format="%Y%j"), 
-                            val = inData()$LS_dat[[bandToPlot]], 
-                            doy = yday(strptime(inData()$LS_dat$date,format="%Y%j")))
-            if(input$LSplotType == "Years"){
-              theLSplot = ggplot(data = dt, aes(x=date, y=val)) + geom_point()
-            }else if(input$LSplotType == "DoY"){
-              theLSplot = ggplot(data = dt, aes(x=doy, y=val)) + geom_point()
+            
+            
+            if(band == "evi-nbr"){
+              nirBand = paste0("nir",samp)
+              blueBand = paste0("blue",samp)
+              redBand = paste0("red", samp)
+              swirBand = paste0("swir2",samp)
+              
+              nir = inData()$LS_dat[[nirBand]]/10000
+              swir = inData()$LS_dat[[swirBand]]/10000
+              red = inData()$LS_dat[[redBand]]/10000
+              blue = inData()$LS_dat[[blueBand]]/10000
+              
+              # a trick for distinguishing wetlands, thanks to Damien
+              
+              nbr = (nir - swir) / (nir + swir)
+              
+              G = 2.5; L = 1; C1 = 6; C2 = 7.5
+              
+              evi = G * (nir - red) / (nir + C1*red - C2*blue + L)
+              # evi[evi > 1] = 1
+              # evi[evi < -1] = -1
+              
+              dt = data.table(date = strptime(inData()$LS_dat$date,format="%Y%j"), 
+                              evi = evi,
+                              nbr = nbr,
+                              doy = yday(strptime(inData()$LS_dat$date,format="%Y%j")))
+              
+              dtm = melt(dt, id.vars = c("date", "doy"))
+              
+              if(input$LSplotType == "Years"){
+                theLSplot = ggplot(data = dtm, aes(x=date, y=value, color= variable)) + geom_point() +
+                  theme_bw() + 
+                  scale_color_manual("", values=c("evi" = "darkgreen", "nbr" = "red"), guide=F) +
+                  theme(axis.text = element_text(size = 14, face="bold"))
+                
+                
+              }else if(input$LSplotType == "DoY"){
+                theLSplot = ggplot(data = dtm, aes(x=doy, y=value, color= variable)) + geom_point() +
+                  theme_bw() + 
+                  scale_color_manual("", values=c("evi" = "darkgreen", "nbr" = "red"), guide=F) +
+                  theme(axis.text = element_text(size = 14, face="bold"))
+                
+              }
+              
+            }else{
+              
+              dt = data.table(date = strptime(inData()$LS_dat$date,format="%Y%j"), 
+                              val = inData()$LS_dat[[bandToPlot]], 
+                              doy = yday(strptime(inData()$LS_dat$date,format="%Y%j")))
+              
+              if(input$LSplotType == "Years"){
+                theLSplot = ggplot(data = dt, aes(x=date, y=val)) + geom_point() + 
+                  theme_bw() + 
+                  theme(axis.text = element_text(size = 14, face="bold"))
+                
+              }else if(input$LSplotType == "DoY"){
+                theLSplot = ggplot(data = dt, aes(x=doy, y=val)) + geom_point() + 
+                  theme_bw() + 
+                  theme(axis.text = element_text(size = 14, face="bold"))
+                
+              }
+              
             }
             theLSplot
-            
-        }
+          }
       })
     	
     	output$RGBplot <- renderPlot({
