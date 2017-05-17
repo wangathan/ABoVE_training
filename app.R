@@ -609,6 +609,8 @@ server <- function(input, output, session) {
               # evi[evi > 1] = 1
               # evi[evi < -1] = -1
               
+              plotLimits = quantile(c(nbr, evi), c(0.01, 0.99), na.rm=T)
+              
               dt = data.table(date = strptime(inData()$LS_dat$date,format="%Y%j"), 
                               evi = evi,
                               nbr = nbr,
@@ -620,14 +622,16 @@ server <- function(input, output, session) {
                 theLSplot = ggplot(data = dtm, aes(x=date, y=value, color= variable)) + geom_point() +
                   theme_bw() + 
                   scale_color_manual("", values=c("evi" = "darkgreen", "nbr" = "red"), guide=F) +
-                  theme(axis.text = element_text(size = 14, face="bold"))
+                  theme(axis.text = element_text(size = 14, face="bold")) +
+                  ylim(plotLimits)
                 
                 
               }else if(input$LSplotType == "DoY"){
                 theLSplot = ggplot(data = dtm, aes(x=doy, y=value, color= variable)) + geom_point() +
                   theme_bw() + 
                   scale_color_manual("", values=c("evi" = "darkgreen", "nbr" = "red"), guide=F) +
-                  theme(axis.text = element_text(size = 14, face="bold"))
+                  theme(axis.text = element_text(size = 14, face="bold")) +
+                  ylim(plotLimits)
                 
               }
               
@@ -643,6 +647,7 @@ server <- function(input, output, session) {
               # http://onlinelibrary.wiley.com/doi/10.1002/2014WR015634/full
               
               ndwi = (nir - swir) / (nir + swir)
+              plotLimits = quantile(ndwi, c(0.01, 0.99), na.rm=T)
 
               dt = data.table(date = strptime(inData()$LS_dat$date,format="%Y%j"), 
                               ndwi = ndwi,
@@ -652,13 +657,15 @@ server <- function(input, output, session) {
               if(input$LSplotType == "Years"){
                 theLSplot = ggplot(data = dt, aes(x=date, y=ndwi)) + geom_point() +
                   theme_bw() + 
-                  theme(axis.text = element_text(size = 14, face="bold"))
+                  theme(axis.text = element_text(size = 14, face="bold")) +
+                  ylim(plotLimits)
                 
                 
               }else if(input$LSplotType == "DoY"){
                 theLSplot = ggplot(data = dt, aes(x=doy, y=ndwi)) + geom_point() +
                   theme_bw() + 
-                  theme(axis.text = element_text(size = 14, face="bold"))
+                  theme(axis.text = element_text(size = 14, face="bold")) +
+                  ylim(plotLimits)
                 
               }
               
@@ -670,15 +677,20 @@ server <- function(input, output, session) {
                               val = inData()$LS_dat[[bandToPlot]], 
                               doy = yday(strptime(inData()$LS_dat$date,format="%Y%j")))
               
+              plotLimits = quantile(dt$val, c(0.01, 0.99), na.rm=T)
+              
+              
               if(input$LSplotType == "Years"){
                 theLSplot = ggplot(data = dt, aes(x=date, y=val)) + geom_point() + 
                   theme_bw() + 
-                  theme(axis.text = element_text(size = 14, face="bold"))
+                  theme(axis.text = element_text(size = 14, face="bold")) +
+                  ylim(plotLimits)
                 
               }else if(input$LSplotType == "DoY"){
                 theLSplot = ggplot(data = dt, aes(x=doy, y=val)) + geom_point() + 
                   theme_bw() + 
-                  theme(axis.text = element_text(size = 14, face="bold"))
+                  theme(axis.text = element_text(size = 14, face="bold")) +
+                  ylim(plotLimits)
                 
               }
               
