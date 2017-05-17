@@ -587,7 +587,7 @@ server <- function(input, output, session) {
             
             samp =inData()$inSamps[row$i]
             band = input$LSband
-            
+
             if(band == "evi-nbr"){
               nirBand = paste0("nir",samp)
               blueBand = paste0("blue",samp)
