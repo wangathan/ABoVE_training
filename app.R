@@ -32,8 +32,8 @@ ui <- fluidPage(
 	   			textOutput("aYear")
 	   		),
 	   		fluidRow(
-	   		  column(width = 6, uiOutput("tilepick"))
-	   		  #column(width = 6, uiOutput("samplepick"))
+	   		  column(width = 6, uiOutput("tilepick")),
+	   		  column(width = 6, uiOutput("samplepick"))
 	   		  #tableOutput("isInDatNull")
 	   		),
 	   		fluidRow(
@@ -208,7 +208,6 @@ server <- function(input, output, session) {
                 selected="Bh11v11")
   })
   
-  
   inData = reactive({
     
     if(!is.null(input$tilepick)){
@@ -234,6 +233,14 @@ server <- function(input, output, session) {
       return(list(sampleShapes=sampleShapes, LS_dat=LS_dat, tifsPan=tifsPan, tifsFull=tifsFull,tifsMin=tifsMin,dt=dt,inSamps=inSamps))
     }
     })
+  
+  output$samplepick = renderUI({
+    selectInput(inputId = "samplepick",
+                label = "Select Sample",
+                choices = inData()$inSamps,
+                selected= inData()$inSamps[row$i])
+  })
+  
    # # 
    #    output$isInDatNull <- renderTable({
    #      
@@ -263,6 +270,7 @@ server <- function(input, output, session) {
  																					wetlandFlag = 0,
  																					landUse = 0,
  																					year = NA,
+ 																					completed = 0,
  																					skipped = 0,
  																					whySkipped=""),
  											 i = 1)
@@ -272,51 +280,94 @@ server <- function(input, output, session) {
  	# update row when tilepick happens
  	observeEvent(input$tilepick, {
  		if(!is.null(inData()) & !is.null(input$tilepick)){
- 			if(inData()$dt %in% list.files("../buildTraining")){
- 				row$flags = rbind(read.csv(inData()$dt), data.frame(tile=input$tilepick,
- 																														samp = inData()$inSamps[nrow(read.csv(inData()$dt))+1],
- 																														surfaceType = 0,
- 																														vegForm = 0,
- 																														phenotype = 0,
- 																														density = 0,
- 																														wetlandFlag = 0,
- 																														landUse = 0,
- 																														year = NA,
- 																														skipped = 0,
- 																														whySkipped=""))
- 				row$i = nrow(read.csv(inData()$dt))+1
+ 			#if(inData()$dt %in% list.files("../buildTraining")){
+ 			if(file.exists(inData()$dt)){
+ 			  row$flags = read.csv(inData()$dt)
+ 			  row$i = max(which(row$flags$completed != 0))+1
  			}else{
- 				row$flags = data.frame(tile=input$tilepick,
- 															 samp = inData()$inSamps[1],
- 															 surfaceType = 0,
- 															 vegForm = 0,
- 															 phenotype = 0,
- 															 density = 0,
- 															 wetlandFlag = 0,
- 															 landUse = 0,
- 															 year = NA,
- 															 skipped = 0,
- 															 whySkipped="")
- 				row$i = 1
+ 			  row$flags = data.frame(tile = rep(input$tilepick, length(inData()$inSamps)),
+ 			                         samp = inData()$inSamps,
+ 			                         surfaceType = rep(0, length(inData()$inSamps)),
+ 			                         vegForm = rep(0, length(inData()$inSamps)),
+ 			                         phenotype = rep(0, length(inData()$inSamps)),
+ 			                         density = rep(0, length(inData()$inSamps)),
+ 			                         wetlandFlag = rep(0, length(inData()$inSamps)),
+ 			                         landUse = rep(0, length(inData()$inSamps)),
+ 			                         year = rep(NA, length(inData()$inSamps)),
+ 			                         completed = rep(0, length(inData()$inSamps)),
+ 			                         skipped = rep(0, length(inData()$inSamps)),
+ 			                         whySkipped = rep("", length(inData()$inSamps))
+ 			                        )
+ 			  row$i = 1
  			}
+ 			  
+ 			#   
+ 			# 	row$flags = rbind(read.csv(inData()$dt), data.frame(tile=input$tilepick,
+ 			# 																											samp = inData()$inSamps[nrow(read.csv(inData()$dt))+1],
+ 			# 																											surfaceType = 0,
+ 			# 																											vegForm = 0,
+ 			# 																											phenotype = 0,
+ 			# 																											density = 0,
+ 			# 																											wetlandFlag = 0,
+ 			# 																											landUse = 0,
+ 			# 																											year = NA,
+ 			# 																											skipped = 0,
+ 			# 																											whySkipped=""))
+ 			# 	row$i = nrow(read.csv(inData()$dt))+1
+ 			# }else{
+ 			# 	row$flags = data.frame(tile=input$tilepick,
+ 			# 												 samp = inData()$inSamps[1],
+ 			# 												 surfaceType = 0,
+ 			# 												 vegForm = 0,
+ 			# 												 phenotype = 0,
+ 			# 												 density = 0,
+ 			# 												 wetlandFlag = 0,
+ 			# 												 landUse = 0,
+ 			# 												 year = NA,
+ 			# 												 skipped = 0,
+ 			# 												 whySkipped="")
+ 			# 	row$i = 1
  		}
  	})
+ 	
+ 	observeEvent(input$samplepick, {
+ 	  if(!is.null(inData()) & !is.null(input$samplepick)){
+ 	    
+ 	    theSamp = input$samplepick
+ 	    #print(theSamp)
+ 	    row$i = which(inData()$inSamps == theSamp)
+ 	    
+ 	    # # create a row for the new sample in the dataframe if it doesn't exist yet
+ 	    # if(! row$i %in% row$flags[,"samp"]){
+ 	    #   row$flags = rbind(row$flags, data.frame(tile = isolate(input$tilepick),
+ 	    #                                           samp = theSamp,
+ 	    #                                           surfaceType = 0,
+ 	    #                                           vegForm = 0,
+ 	    #                                           phenotype = 0,
+ 	    #                                           density = 0,
+ 	    #                                           wetlandFlag = 0,
+ 	    #                                           year = NA,
+ 	    #                                           skipped = 0,
+ 	    #                                           whySkipped = ""))
+ 	    # }
+ 	  }
+ 	})
 
-    	inTifsFull = reactive({
-   
-    	  if(!is.null(inData())){
-   
-    	  # gather list of all images available for a sample
-    		vars = paste0(sapply(strsplit(inData()$tifsFull[grep(paste0("pp",inData()$inSamps[row$i],"_"), inData()$tifsFull)], "pp|sample/"),"[[",2),
-    									"pp",
-    									inData()$inSamps[row$i],
-    									"_yd",
-    									sapply(strsplit(inData()$tifsFull[grep(paste0("pp",inData()$inSamps[row$i],"_"), inData()$tifsFull)], "_yd|\\.tif|_mul|_pan|_min"),"[[",2))
-   
-  		return(as.list(vars))
-   
-    	  }
-    	})
+  	inTifsFull = reactive({
+ 
+  	  if(!is.null(inData())){
+ 
+  	  # gather list of all images available for a sample
+  		vars = paste0(sapply(strsplit(inData()$tifsFull[grep(paste0("pp",inData()$inSamps[row$i],"_"), inData()$tifsFull)], "pp|sample/"),"[[",2),
+  									"pp",
+  									inData()$inSamps[row$i],
+  									"_yd",
+  									sapply(strsplit(inData()$tifsFull[grep(paste0("pp",inData()$inSamps[row$i],"_"), inData()$tifsFull)], "_yd|\\.tif|_mul|_pan|_min"),"[[",2))
+ 
+		return(as.list(vars))
+ 
+  	  }
+  	})
    
     
     	# pickers
@@ -332,16 +383,16 @@ server <- function(input, output, session) {
     	  }
     	})
     	
-    	output$samplepick = renderUI({
-    		if(!is.null(inData()) & !is.null(inTifsFull())){
-    			
-    			selectInput(inputId = "samplepick",
-    									label = "Select Sample",
-    									choices = inData()$inSamps,
-    									selected = inData()$inSamps[1])
-    			
-    		}
-    	})
+    	# output$samplepick = renderUI({
+    	# 	if(!is.null(inData()) & !is.null(inTifsFull())){
+    	# 		
+    	# 		selectInput(inputId = "samplepick",
+    	# 								label = "Select Sample",
+    	# 								choices = inData()$inSamps,
+    	# 								selected = inData()$inSamps[1])
+    	# 		
+    	# 	}
+    	#})
     
     	# observeEvent(input$samplepick,{
     	# 	row$i = input$samplepick
@@ -395,39 +446,42 @@ server <- function(input, output, session) {
     	             if(!is.null(inData()) & rowReady & !is.null(input$tilepick)){
     	               
     							 {
+    							  row$flags[row$i, "completed"] = 1
     							 	write.csv(row$flags, inData()$dt, row.names=F)
     							 	row$i = row$i + 1
-    							 	row$flags = rbind(row$flags, data.frame(tile=input$tilepick,
-    							 																					samp = inData()$inSamps[row$i],
-    							 																					surfaceType = 0,
-    							 																					vegForm = 0,
-    							 																					phenotype = 0,
-    							 																					density = 0,
-    							 																					wetlandFlag = 0,
-    							 																					landUse = 0,
-    							 																					year=NA,
-    							 																					skipped = 0,
-    							 																					whySkipped=""))
+    							 	
+    							 	# row$flags = rbind(row$flags, data.frame(tile=input$tilepick,
+    							 	# 																				samp = inData()$inSamps[row$i],
+    							 	# 																				surfaceType = 0,
+    							 	# 																				vegForm = 0,
+    							 	# 																				phenotype = 0,
+    							 	# 																				density = 0,
+    							 	# 																				wetlandFlag = 0,
+    							 	# 																				landUse = 0,
+    							 	# 																				year=NA,
+    							 	# 																				skipped = 0,
+    							 	# 																				whySkipped=""))
     							 }})
     	
     	observeEvent(input$skip,
     	             if(!is.null(inData())){
     	             
     	             {
-    							 	row$flags[row$i,"skipped"]=1
+    							 	row$flags[row$i,"skipped"] = 1
+    							 	row$flags[row$i, "completed"] = 1
     							 	write.csv(row$flags, inData()$dt, row.names=F)
     							 	row$i = row$i + 1
-    							 	row$flags = rbind(row$flags, data.frame(tile=input$tilepick,
-    							 																					samp = inData()$inSamps[row$i],
-    							 																					surfaceType = 0,
-    							 																					vegForm = 0,
-    							 																					phenotype = 0,
-    							 																					density = 0,
-    							 																					wetlandFlag = 0,
-    							 																					landUse = 0,
-    							 																					year=NA,
-    							 																					skipped = 0,
-    							 																					whySkipped=""))
+    							 	# row$flags = rbind(row$flags, data.frame(tile=input$tilepick,
+    							 	# 																				samp = inData()$inSamps[row$i],
+    							 	# 																				surfaceType = 0,
+    							 	# 																				vegForm = 0,
+    							 	# 																				phenotype = 0,
+    							 	# 																				density = 0,
+    							 	# 																				wetlandFlag = 0,
+    							 	# 																				landUse = 0,
+    							 	# 																				year=NA,
+    							 	# 																				skipped = 0,
+    							 	# 																				whySkipped=""))
     							 }
     	               })
     	
@@ -566,13 +620,13 @@ server <- function(input, output, session) {
     	               }
     	                
     	             })
-    # 	observeEvent(input$skipBox,
-    # 							 {
-    # 							   if(rowReady){
-    #     							 	row$flags[row$i,"whySkipped"]=input$skipBox
-    #     							 	row$flags[row$i,"skipped"] = 1
-    # 							   }
-    # 							 })
+     	observeEvent(input$skipBox,
+     							 {
+     							   if(rowReady){
+         							 	row$flags[row$i,"whySkipped"]=input$skipBox
+         							 	row$flags[row$i,"skipped"] = 1
+     							   }
+    							 })
     
     	output$diag = renderText({
     	  if(!is.null(inData()) & rowReady){
