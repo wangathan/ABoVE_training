@@ -238,7 +238,7 @@ server <- function(input, output, session) {
     selectInput(inputId = "samplepick",
                 label = "Select Sample",
                 choices = inData()$inSamps,
-                selected= inData()$inSamps[row$i])
+                selected= isolate(inData()$inSamps[row$i]))
   })
   
    # # 
@@ -692,15 +692,15 @@ server <- function(input, output, session) {
             }else if(band == "ndwi"){
               
               nirBand = paste0("nir",samp)
-              swirBand = paste0("swir1",samp)
+              greenBand = paste0("grn",samp)
               
               nir = inData()$LS_dat[[nirBand]]/10000
-              swir = inData()$LS_dat[[swirBand]]/10000
+              green = inData()$LS_dat[[greenBand]]/10000
               
               # additional information for determining wetlands, thanks to
               # http://onlinelibrary.wiley.com/doi/10.1002/2014WR015634/full
               
-              ndwi = (nir - swir) / (nir + swir)
+              ndwi = (green - nir) / (nir + green)
               plotLimits = quantile(ndwi, c(0.01, 0.99), na.rm=T)
 
               dt = data.table(date = strptime(inData()$LS_dat$date,format="%Y%j"), 
