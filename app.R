@@ -67,11 +67,21 @@ ui <- fluidPage(
 					hr(),
 					p("PHENOTYPE"),
 					actionButton(inputId = "DBF",
-											 label = "Deciduous Broadleaf"),
+											 label = "Deciduous"),
 					actionButton(inputId = "ENF",
-											 label = "Evergreen Needleleaf"),
+											 label = "Evergreen"),
 					actionButton(inputId = "MXF",
-											 label = "Mixed Forest")
+											 label = "Mixed")
+				),
+				fluidRow(
+				  hr(),
+				  p("LEAF TYPE"),
+				  actionButton(inputId = "isBroad",
+				               label = "Broadleaf"),
+				  actionButton(inputId = "isNeedle",
+				               label = "Needleleaf"),
+				  actionButton(inputId = "isMixedLeaf",
+				               label = "Mixed Leaf")
 				),
 	   		fluidRow(
 	   			hr(),
@@ -103,6 +113,16 @@ ui <- fluidPage(
 				  actionButton(inputId = "isTimber",
 				               label = "Timber")
 				),
+				fluidRow(
+				  hr(),
+				  p("CONFIDENCE IN LABEL"),
+				  actionButton(inputId = "lowConfidence",
+				               label = "Low"),
+				  actionButton(inputId = "medConfidence",
+				               label = "Medium"),
+				  actionButton(inputId = "highConfidence",
+				               label = "High")
+				),
 	   		fluidRow(
 	   			hr(),
 	   			tableOutput("trainingRow"),
@@ -122,7 +142,7 @@ ui <- fluidPage(
 				  br(),
 				  radioButtons(inputId = "skipBox",
 				               label = "Why skip this label?",
-				               choices = list("Not Skip", "Cloud", "Unclear", "I'm Lazy", "Other"))
+				               choices = list("Not Skip", "Insufficient Imagery","Cloud", "Unclear", "I'm Lazy", "Other"))
 				)
 	   	)
 	   	),
@@ -266,11 +286,13 @@ server <- function(input, output, session) {
  																					surfaceType = 0,
  																					vegForm = 0,
  																					phenotype = 0,
+ 																					leafType = 0,
  																					density = 0,
  																					wetlandFlag = 0,
  																					landUse = 0,
  																					year = NA,
  																					completed = 0,
+ 																					confidence = 0,
  																					skipped = 0,
  																					whySkipped=""),
  											 i = 1)
@@ -290,11 +312,13 @@ server <- function(input, output, session) {
  			                         surfaceType = rep(0, length(inData()$inSamps)),
  			                         vegForm = rep(0, length(inData()$inSamps)),
  			                         phenotype = rep(0, length(inData()$inSamps)),
+ 			                         leafType = rep(0, length(inData()$inSamps)),
  			                         density = rep(0, length(inData()$inSamps)),
  			                         wetlandFlag = rep(0, length(inData()$inSamps)),
  			                         landUse = rep(0, length(inData()$inSamps)),
  			                         year = rep(NA, length(inData()$inSamps)),
  			                         completed = rep(0, length(inData()$inSamps)),
+ 			                         confidence = rep(0, length(inData()$inSamps)),
  			                         skipped = rep(0, length(inData()$inSamps)),
  			                         whySkipped = rep("", length(inData()$inSamps))
  			                        )
@@ -419,9 +443,11 @@ server <- function(input, output, session) {
       	 		lType = switch(therow$surfaceType+1,"No Label","Water", "Bare", "Veg","Ice")
       	 		lForm = switch(therow$vegForm+1,"No Label","Moss","Grass","Shrub","Tree")
       	 		lPheno = switch(therow$phenotype+1,"No Label", "Deciduous", "Evergreen","Mixed")
+      	 		lLeaf = switch(therow$leafType+1,"No Label", "Broad", "Needle","Mixed")
       	 		lDense = 	switch(therow$density+1,"No Label","Sparse", "Open","Dense")
       	 		lWet = switch(therow$wetlandFlag+1,"No Label","Not Wetland","Wetland")
       	 		lUse = switch(therow$landUse+1,"No Label","Urban","Agriculture" ,"Pasture", "Timber")
+      	 		lConf = switch(therow$confidence+1,"No Label","Low","Medium" ,"High")
       	 		lYear = therow$year
       
       	 lrow = data.frame(tile = input$tilepick,
@@ -429,9 +455,11 @@ server <- function(input, output, session) {
       	 									 surfaceType = lType,
       	 									 vegForm = lForm,
       	 									 phenotype = lPheno,
+      	 									 leafType = lLeaf,
       	 									 density = lDense,
       	 									 wetlandFlag = lWet,
       	 									 landUse = lUse,
+      	 									 confidence = lConf,
       	 									 year = lYear,
       	 									 skipped = " ",
       	 									 whySkipped = " ")
@@ -595,6 +623,27 @@ server <- function(input, output, session) {
     							 	    row$flags[row$i,"surfaceType"]=3
     							   }
     							 })
+    	observeEvent(input$isBroad,
+    	             {
+    	               if(rowReady){
+    	                 row$flags[row$i,"leafType"]=1
+    	                 row$flags[row$i,"surfaceType"]=3
+    	               }
+    	             })
+    	observeEvent(input$isNeedle,
+    	             {
+    	               if(rowReady){
+    	                 row$flags[row$i,"leafType"]=2
+    	                 row$flags[row$i,"surfaceType"]=3
+    	               }
+    	             })
+    	observeEvent(input$isMixedLeaf,
+    	             {
+    	               if(rowReady){
+    	                 row$flags[row$i,"leafType"]=3
+    	                 row$flags[row$i,"surfaceType"]=3
+    	               }
+    	             })
     	observeEvent(input$isUrban,
     	             {
     	               if(rowReady){
@@ -619,6 +668,24 @@ server <- function(input, output, session) {
     	                  row$flags[row$i,"landUse"]=4
     	               }
     	                
+    	             })
+    	observeEvent(input$highConfidence,
+    	             {
+    	               if(rowReady){
+    	                 row$flags[row$i,"confidence"]=3
+    	               }
+    	             })
+    	observeEvent(input$medConfidence,
+    	             {
+    	               if(rowReady){
+    	                 row$flags[row$i,"confidence"]=2
+    	               }
+    	             })
+    	observeEvent(input$lowConfidence,
+    	             {
+    	               if(rowReady){
+    	                 row$flags[row$i,"confidence"]=1
+    	               }
     	             })
      	observeEvent(input$skipBox,
      							 {
