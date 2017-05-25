@@ -125,9 +125,9 @@ ui <- fluidPage(
 				),
 	   		fluidRow(
 	   			hr(),
-	   			tableOutput("trainingRow"),
+	   			div(tableOutput("trainingRow"), style = "font-size:70%"),
 	   			br(),
-	   			tableOutput("legendRow")
+	   			div(tableOutput("legendRow"), style = "font-size:70%")
 	   		),
 				fluidRow(
 				  br(),
@@ -209,7 +209,7 @@ server <- function(input, output, session) {
     tileShapes = list.files("../../../ABoVE_samples/shapefiles")
     tileShapes = tileShapes[!grepl("zip",tileShapes)]
     
-    tileSamplesIn = list.files("../../../ABoVE_samples/",
+    tileSamplesIn = list.files("../../../ABoVE_samples/stamps",
                                pattern="EOSD")
     tileSamples = sapply(strsplit(tileSamplesIn, "_"), "[[",2)
     
@@ -231,7 +231,7 @@ server <- function(input, output, session) {
   inData = reactive({
     
     if(!is.null(input$tilepick)){
-      tifPath  = paste0("../../../ABoVE_samples/EOSD_",input$tilepick, "_sample")
+      tifPath  = paste0("../../../ABoVE_samples/stamps/EOSD_",input$tilepick, "_sample")
       sampleShapes = readOGR(dsn = paste0('../../../ABoVE_samples/shapefiles/',input$tilepick),
                              layer = paste0("EOSD_",input$tilepick,"_sample"))
       LS_dat = fread(paste0("../../../ABoVE_samples/LS/",input$tilepick,"_LS_filtered.csv"))
