@@ -142,7 +142,7 @@ ui <- fluidPage(
 				  br(),
 				  radioButtons(inputId = "skipBox",
 				               label = "Why skip this label?",
-				               choices = list("Not Skip", "Insufficient Imagery","Cloud", "Unclear", "I'm Lazy", "Other"))
+				               choices = list("Not Skip", "Insufficient Imagery","Mixed Pixel", "Unclear", "I'm Lazy", "Other"))
 				)
 	   	)
 	   	),
@@ -274,7 +274,9 @@ server <- function(input, output, session) {
 		# stolen from https://spatiallyexplicit.wordpress.com/2011/06/07/crop-circles/
 	linstretch<-function(img,minmax=NA){
 		#if(is.na(minmax)) minmax<-c(min(getValues(img),na.rm=T),max(getValues(img),na.rm=T))
-		temp<-calc(img,fun=function(x) (255*(x-minmax[1]))/(minmax[2]-minmax[1]))
+	  theMin = quantile(values(img), 0.02, na.rm=T)
+	  theMax = quantile(values(img), 0.98, na.rm=T)
+		temp<-calc(img,fun=function(x) (255*(x-theMin))/(theMax-theMin))
 		#set all values above or below minmax to 0 or 255
 		temp[temp<0]<-0;temp[temp>255]<-255;
 		return(temp)
@@ -361,19 +363,6 @@ server <- function(input, output, session) {
  	    #print(theSamp)
  	    row$i = which(inData()$inSamps == theSamp)
  	    
- 	    # # create a row for the new sample in the dataframe if it doesn't exist yet
- 	    # if(! row$i %in% row$flags[,"samp"]){
- 	    #   row$flags = rbind(row$flags, data.frame(tile = isolate(input$tilepick),
- 	    #                                           samp = theSamp,
- 	    #                                           surfaceType = 0,
- 	    #                                           vegForm = 0,
- 	    #                                           phenotype = 0,
- 	    #                                           density = 0,
- 	    #                                           wetlandFlag = 0,
- 	    #                                           year = NA,
- 	    #                                           skipped = 0,
- 	    #                                           whySkipped = ""))
- 	    # }
  	  }
  	})
 
@@ -407,17 +396,6 @@ server <- function(input, output, session) {
     	  }
     	})
     	
-    	# output$samplepick = renderUI({
-    	# 	if(!is.null(inData()) & !is.null(inTifsFull())){
-    	# 		
-    	# 		selectInput(inputId = "samplepick",
-    	# 								label = "Select Sample",
-    	# 								choices = inData()$inSamps,
-    	# 								selected = inData()$inSamps[1])
-    	# 		
-    	# 	}
-    	#})
-    
     	# observeEvent(input$samplepick,{
     	# 	row$i = input$samplepick
     	# })
@@ -478,17 +456,6 @@ server <- function(input, output, session) {
     							 	write.csv(row$flags, inData()$dt, row.names=F)
     							 	row$i = row$i + 1
     							 	
-    							 	# row$flags = rbind(row$flags, data.frame(tile=input$tilepick,
-    							 	# 																				samp = inData()$inSamps[row$i],
-    							 	# 																				surfaceType = 0,
-    							 	# 																				vegForm = 0,
-    							 	# 																				phenotype = 0,
-    							 	# 																				density = 0,
-    							 	# 																				wetlandFlag = 0,
-    							 	# 																				landUse = 0,
-    							 	# 																				year=NA,
-    							 	# 																				skipped = 0,
-    							 	# 																				whySkipped=""))
     							 }})
     	
     	observeEvent(input$skip,
@@ -499,17 +466,6 @@ server <- function(input, output, session) {
     							 	row$flags[row$i, "completed"] = 1
     							 	write.csv(row$flags, inData()$dt, row.names=F)
     							 	row$i = row$i + 1
-    							 	# row$flags = rbind(row$flags, data.frame(tile=input$tilepick,
-    							 	# 																				samp = inData()$inSamps[row$i],
-    							 	# 																				surfaceType = 0,
-    							 	# 																				vegForm = 0,
-    							 	# 																				phenotype = 0,
-    							 	# 																				density = 0,
-    							 	# 																				wetlandFlag = 0,
-    							 	# 																				landUse = 0,
-    							 	# 																				year=NA,
-    							 	# 																				skipped = 0,
-    							 	# 																				whySkipped=""))
     							 }
     	               })
     	
@@ -841,7 +797,7 @@ server <- function(input, output, session) {
         		if(input$falseCol == "432"){
         		  if(grepl("WV02|WV03",input$filepick)){
         		    plotRGB(rgbTif,
-        		            r=7,g=5,b=3, stretch = 'lin')
+        		            r=7,g=5,b=2, stretch = 'lin')
         		  }else if(grepl("WV01",input$filepick)){
         		    plotRGB(rgbTif,
         		            r=1,g=1,b=1, stretch = 'lin')
@@ -902,40 +858,36 @@ server <- function(input, output, session) {
         		
         		miniExt = extent(c(xext-100, xext+100, yext-100, yext+100))
         		
-        		# before cropping, set stretch
-        		rast_b = linstretch(raster(zoomTif, layer=1), minmax = quantile(raster(zoomTif, layer=1), c(0.02,0.98)))
-        		rast_g = linstretch(raster(zoomTif, layer=2), minmax = quantile(raster(zoomTif, layer=2), c(0.02,0.98)))
-        		rast_r = linstretch(raster(zoomTif, layer=3), minmax = quantile(raster(zoomTif, layer=3), c(0.02,0.98)))
-        		rast_n = linstretch(raster(zoomTif, layer=4), minmax = quantile(raster(zoomTif, layer=4), c(0.02,0.98)))
-        		
-        		zoomTif_str = stack(rast_b, rast_g, rast_r, rast_n)
-        		
-        		zoomTif = crop(zoomTif_str, miniExt)
+        		if(grepl("WV02|WV03",input$filepick)){
+          		# before cropping, set stretch
+          		rast_b = linstretch(raster(zoomTif, layer=2), minmax = quantile(raster(zoomTif, layer=2), c(0.02,0.98)))
+          		rast_g = linstretch(raster(zoomTif, layer=3), minmax = quantile(raster(zoomTif, layer=3), c(0.02,0.98)))
+          		rast_r = linstretch(raster(zoomTif, layer=5), minmax = quantile(raster(zoomTif, layer=5), c(0.02,0.98)))
+          		rast_n = linstretch(raster(zoomTif, layer=7), minmax = quantile(raster(zoomTif, layer=7), c(0.02,0.98)))
+          		
+          		zoomTif_str = stack(rast_b, rast_g, rast_r, rast_n)
+          		
+          		zoomTif = crop(zoomTif_str, miniExt)
+        		}else{
+        		  # before cropping, set stretch
+        		  rast_b = linstretch(raster(zoomTif, layer=1), minmax = quantile(raster(zoomTif, layer=1), c(0.02,0.98)))
+        		  rast_g = linstretch(raster(zoomTif, layer=2), minmax = quantile(raster(zoomTif, layer=2), c(0.02,0.98)))
+        		  rast_r = linstretch(raster(zoomTif, layer=3), minmax = quantile(raster(zoomTif, layer=3), c(0.02,0.98)))
+        		  rast_n = linstretch(raster(zoomTif, layer=4), minmax = quantile(raster(zoomTif, layer=4), c(0.02,0.98)))
+        		  
+        		  zoomTif_str = stack(rast_b, rast_g, rast_r, rast_n)
+        		  
+        		  zoomTif = crop(zoomTif_str, miniExt)
+        		}
         		
         		# world view has different band assignments
         		if(input$falseCol == "321"){
-        		  if(grepl("WV02|WV03",input$filepick)){
-        		    plotRGB(zoomTif,
-        		            r=5,g=3,b=2, stretch = 'lin')
-        		  }else if(grepl("WV01",input$filepick)){
-        		    plotRGB(zoomTif,
-        		            r=1,g=1,b=1, stretch = 'lin')
-        		  }else{
         		    plotRGB(zoomTif,
         		            r=3,g=2,b=1, stretch = 'lin')
-        		  }
         		}
         		if(input$falseCol == "432"){
-        		  if(grepl("WV02|WV03",input$filepick)){
-        		    plotRGB(zoomTif,
-        		            r=7,g=5,b=3, stretch = 'lin')
-        		  }else if(grepl("WV01",input$filepick)){
-        		    plotRGB(zoomTif,
-        		            r=1,g=1,b=1, stretch = 'lin')
-        		  }else{
         		    plotRGB(zoomTif,
         		            r=4,g=3,b=2, stretch = 'lin')
-        		  }
         		}
         		
         		plot(spTransform(inData()$sampleShapes[inData()$inSamps[isolate(row$i)],],CRSobj = crs(zoomTif)), col=NA, border = "red", add=T)
