@@ -49,7 +49,9 @@ ui <- fluidPage(
 	   			actionButton(inputId = "isBare",
 	   									 label = "Barren"),
 	   			actionButton(inputId = "isIce",
-	   			             label = "Permanent Snow/Ice")
+	   			             label = "Permanent Snow/Ice"),
+	   			actionButton(inputId = "resetSurface",
+	   			             label = "Reset")
 	   		),
 	   		fluidRow(
 	   			hr(),
@@ -61,7 +63,9 @@ ui <- fluidPage(
 	   			actionButton(inputId = "isShrub",
 	   									 label = "Shrubland"),
 	   			actionButton(inputId = "isTree",
-	   									 label = "Forest")
+	   									 label = "Forest"),
+	   			actionButton(inputId = "resetVeg",
+	   			             label = "Reset")
 	   		),
 				fluidRow(
 					hr(),
@@ -71,7 +75,9 @@ ui <- fluidPage(
 					actionButton(inputId = "ENF",
 											 label = "Evergreen"),
 					actionButton(inputId = "MXF",
-											 label = "Mixed")
+											 label = "Mixed"),
+					actionButton(inputId = "resetPheno",
+					             label = "Reset")
 				),
 				fluidRow(
 				  hr(),
@@ -81,7 +87,9 @@ ui <- fluidPage(
 				  actionButton(inputId = "isNeedle",
 				               label = "Needleleaf"),
 				  actionButton(inputId = "isMixedLeaf",
-				               label = "Mixed Leaf")
+				               label = "Mixed Leaf"),
+				  actionButton(inputId = "resetLeaf",
+				               label = "Reset")
 				),
 	   		fluidRow(
 	   			hr(),
@@ -91,7 +99,9 @@ ui <- fluidPage(
 	   			actionButton(inputId = "isOpen",
 	   									 label = "Open"),
 	   			actionButton(inputId = "isDense",
-	   									 label = "Dense")
+	   									 label = "Dense"),
+	   			actionButton(inputId = "resetDensity",
+	   			             label = "Reset")
 	   		),
 	   		fluidRow(
 	   			hr(),
@@ -99,7 +109,9 @@ ui <- fluidPage(
 	   			actionButton(inputId = "isWet",
 	   									 label = "Wetland"),
 	   			actionButton(inputId = "isDry",
-	   									 label = "Not Wetland")
+	   									 label = "Not Wetland"),
+	   			actionButton(inputId = "resetWet",
+	   			             label = "Reset")
 	   		),
 				fluidRow(
 				  hr(),
@@ -111,7 +123,9 @@ ui <- fluidPage(
 				  actionButton(inputId = "isPasture",
 				               label = "Pasture"),
 				  actionButton(inputId = "isTimber",
-				               label = "Timber")
+				               label = "Timber"),
+				  actionButton(inputId = "resetLandUse",
+				               label = "Reset")
 				),
 				fluidRow(
 				  hr(),
@@ -121,7 +135,9 @@ ui <- fluidPage(
 				  actionButton(inputId = "medConfidence",
 				               label = "Medium"),
 				  actionButton(inputId = "highConfidence",
-				               label = "High")
+				               label = "High"),
+				  actionButton(inputId = "resetConfidence",
+				               label = "Reset")
 				),
 	   		fluidRow(
 	   			hr(),
@@ -525,6 +541,12 @@ server <- function(input, output, session) {
     							 	    row$flags[row$i,"surfaceType"]=3
     							   }
     							 })
+    	observeEvent(input$resetVeg,
+    	             {
+    	               if(rowReady){
+    	                 row$flags[row$i,"vegForm"]=0
+    	               }
+    	             })
     	observeEvent(input$isSparse,
     	             {
     	               if(rowReady){
