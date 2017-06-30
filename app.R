@@ -124,6 +124,8 @@ ui <- fluidPage(
 				               label = "Pasture"),
 				  actionButton(inputId = "isTimber",
 				               label = "Timber"),
+				  actionButton(inputId = "isRecovering",
+				               label = "Recovering"),
 				  actionButton(inputId = "resetLandUse",
 				               label = "Reset")
 				),
@@ -417,7 +419,7 @@ server <- function(input, output, session) {
       	 		lLeaf = switch(therow$leafType+1,"No Label", "Broad", "Needle","Mixed")
       	 		lDense = 	switch(therow$density+1,"No Label","Sparse", "Open","Dense")
       	 		lWet = switch(therow$wetlandFlag+1,"No Label","Not Wetland","Wetland")
-      	 		lUse = switch(therow$landUse+1,"No Label","Urban","Agriculture" ,"Pasture", "Timber")
+      	 		lUse = switch(therow$landUse+1,"No Label","Urban","Agriculture" ,"Pasture", "Timber", "Recovery")
       	 		lConf = switch(therow$confidence+1,"No Label","Low","Medium" ,"High")
       	 		lYear = therow$year
       
@@ -651,6 +653,12 @@ server <- function(input, output, session) {
     	             {
     	               if(rowReady){
     	                  row$flags[row$i,"landUse"]=4
+    	               }
+    	             })
+    	observeEvent(input$isRecovering,
+    	             {
+    	               if(rowReady){
+    	                 row$flags[row$i,"landUse"]=5
     	               }
     	             })
     	observeEvent(input$resetLandUse,
