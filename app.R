@@ -167,7 +167,7 @@ ui <- fluidPage(
    		fluidRow( ## Landsat data display
    		  h3("Landsat data"),
    		  radioButtons(inputId = "LSband", label="LS Band", inline=T, 
-   		               choices = c("blue", "grn", "red", "nir", "swir1", "swir2", "bt", "ndvi", "nbr","ndwi", "evi-nbr")),
+   		               choices = c("blue", "grn", "red", "nir", "swir1", "swir2", "bt", "ndvi", "ndwi", "evi-nbr", "tcb", "tcg", "tcw", "tcw-tcg")),
    		  radioButtons(inputId = "LSplotType", label="Plot Type", inline=T, 
    		               choices = c("Years", "DoY")),
    		  plotOutput("LSplot", height=330)
@@ -177,7 +177,9 @@ ui <- fluidPage(
    		         radioButtons(inputId = "falseCol", label="Band Composite", choices=c("321","432"))),
    		  column(width = 6,
    		         uiOutput("filepick"),
-   		         textOutput("coords"))
+   		         textOutput("coords"),
+   		         textOutput("coords_aea"),
+   		         textOutput("wetcomb"))
    		),
    		br(),
    		fluidRow(
@@ -270,6 +272,8 @@ server <- function(input, output, session) {
     }
     })
   
+  alaskaWetland = raster("../AlaskanWetlands/alaska_wetland_map.tif")
+  
   output$samplepick = renderUI({
     selectInput(inputId = "samplepick",
                 label = "Select Sample",
@@ -323,7 +327,7 @@ server <- function(input, output, session) {
  			#if(inData()$dt %in% list.files("../buildTraining")){
  			if(file.exists(inData()$dt)){
  			  row$flags = read.csv(inData()$dt)
- 			  row$i = max(which(row$flags$completed != 0))+1
+ 			  row$i = min(which(row$flags$completed == 0))
  			}else{
  			  row$flags = data.frame(tile = rep(input$tilepick, length(inData()$inSamps)),
  			                         samp = inData()$inSamps,
@@ -342,33 +346,6 @@ server <- function(input, output, session) {
  			                        )
  			  row$i = 1
  			}
- 			  
- 			#   
- 			# 	row$flags = rbind(read.csv(inData()$dt), data.frame(tile=input$tilepick,
- 			# 																											samp = inData()$inSamps[nrow(read.csv(inData()$dt))+1],
- 			# 																											surfaceType = 0,
- 			# 																											vegForm = 0,
- 			# 																											phenotype = 0,
- 			# 																											density = 0,
- 			# 																											wetlandFlag = 0,
- 			# 																											landUse = 0,
- 			# 																											year = NA,
- 			# 																											skipped = 0,
- 			# 																											whySkipped=""))
- 			# 	row$i = nrow(read.csv(inData()$dt))+1
- 			# }else{
- 			# 	row$flags = data.frame(tile=input$tilepick,
- 			# 												 samp = inData()$inSamps[1],
- 			# 												 surfaceType = 0,
- 			# 												 vegForm = 0,
- 			# 												 phenotype = 0,
- 			# 												 density = 0,
- 			# 												 wetlandFlag = 0,
- 			# 												 landUse = 0,
- 			# 												 year = NA,
- 			# 												 skipped = 0,
- 			# 												 whySkipped="")
- 			# 	row$i = 1
  		}
  	})
  	
@@ -513,6 +490,12 @@ server <- function(input, output, session) {
     	                  row$flags[row$i,"surfaceType"]=4
     	               }
     	             })
+    	observeEvent(input$resetSurface,
+    	             {
+    	               if(rowReady){
+    	                 row$flags[row$i,"surfaceType"]=0
+    	               }
+    	             })
     	observeEvent(input$isMoss,
     							 {
     							   if(rowReady){
@@ -568,6 +551,12 @@ server <- function(input, output, session) {
     							 	    row$flags[row$i,"surfaceType"]=3
     							   }
     							 })
+    	observeEvent(input$resetDensity,
+    	             {
+    	               if(rowReady){
+    	                 row$flags[row$i,"density"]=0
+    	               }
+    	             })
     	observeEvent(input$isDry,
     							 {
     							   if(rowReady){
@@ -580,6 +569,12 @@ server <- function(input, output, session) {
     							 	    row$flags[row$i,"wetlandFlag"]=2
     							   }
     							 })
+    	observeEvent(input$resetWet,
+    	             {
+    	               if(rowReady){
+    	                 row$flags[row$i,"wetlandFlag"]=0
+    	               }
+    	             })
     	observeEvent(input$DBF,
     							 {
     							   if(rowReady){
@@ -601,6 +596,12 @@ server <- function(input, output, session) {
     							 	    row$flags[row$i,"surfaceType"]=3
     							   }
     							 })
+    	observeEvent(input$resetPheno,
+    	             {
+    	               if(rowReady){
+    	                 row$flags[row$i,"phenotype"]=0
+    	               }
+    	             })
     	observeEvent(input$isBroad,
     	             {
     	               if(rowReady){
@@ -620,6 +621,12 @@ server <- function(input, output, session) {
     	               if(rowReady){
     	                 row$flags[row$i,"leafType"]=3
     	                 row$flags[row$i,"surfaceType"]=3
+    	               }
+    	             })
+    	observeEvent(input$resetLeaf,
+    	             {
+    	               if(rowReady){
+    	                 row$flags[row$i,"leafType"]=0
     	               }
     	             })
     	observeEvent(input$isUrban,
@@ -645,7 +652,12 @@ server <- function(input, output, session) {
     	               if(rowReady){
     	                  row$flags[row$i,"landUse"]=4
     	               }
-    	                
+    	             })
+    	observeEvent(input$resetLandUse,
+    	             {
+    	               if(rowReady){
+    	                 row$flags[row$i,"landUse"]=0
+    	               }
     	             })
     	observeEvent(input$highConfidence,
     	             {
@@ -663,6 +675,12 @@ server <- function(input, output, session) {
     	             {
     	               if(rowReady){
     	                 row$flags[row$i,"confidence"]=1
+    	               }
+    	             })
+    	observeEvent(input$resetConfidence,
+    	             {
+    	               if(rowReady){
+    	                 row$flags[row$i,"confidence"]=0
     	               }
     	             })
      	observeEvent(input$skipBox,
@@ -768,6 +786,224 @@ server <- function(input, output, session) {
                 
               }
               
+            }else if(band == "tcb"){
+              
+              nirBand = paste0("nir",samp)
+              greenBand = paste0("grn",samp)
+              blueBand = paste0("blue",samp)
+              redBand = paste0("red",samp)
+              swir1Band = paste0("swir1",samp)
+              swir2Band = paste0("swir2",samp)
+              
+              nir = inData()$LS_dat[[nirBand]]/10000
+              swir1 = inData()$LS_dat[[swir1Band]]/10000
+              swir2 = inData()$LS_dat[[swir2Band]]/10000
+              green = inData()$LS_dat[[greenBand]]/10000
+              blue = inData()$LS_dat[[blueBand]]/10000
+              red = inData()$LS_dat[[redBand]]/10000
+              
+              # additional information for determining wetlands, thanks to
+              # http://www.sciencedirect.com/science/article/pii/S003442571300388X Huang et al 2014 RSE
+              # coefficients from
+              # http://www.sciencedirect.com/science/article/pii/0034425785901026 Crist et al 1985 RSE
+              
+              coefB = 0.2043
+              coefG = 0.4158
+              coefR = 0.5524
+              coefN = 0.5741
+              coefS1 = 0.3124
+              coefS2 = 0.2303
+              
+              tcb = coefB*blue + coefG*green + coefR*red + coefN*nir + coefS1*swir1 + coefS2*swir2
+              plotLimits = quantile(tcb, c(0.01, 0.99), na.rm=T)
+              
+              dt = data.table(date = strptime(inData()$LS_dat$date,format="%Y%j"), 
+                              tcb = tcb,
+                              doy = yday(strptime(inData()$LS_dat$date,format="%Y%j")))
+              
+              
+              if(input$LSplotType == "Years"){
+                theLSplot = ggplot(data = dt, aes(x=date, y=tcb)) + geom_point() +
+                  theme_bw() + 
+                  theme(axis.text = element_text(size = 14, face="bold")) +
+                  ylim(plotLimits)
+                
+                
+              }else if(input$LSplotType == "DoY"){
+                theLSplot = ggplot(data = dt, aes(x=doy, y=tcb)) + geom_point() +
+                  theme_bw() + 
+                  theme(axis.text = element_text(size = 14, face="bold")) +
+                  ylim(plotLimits)
+                
+              }
+              
+            }else if(band == "tcg"){
+              
+              nirBand = paste0("nir",samp)
+              greenBand = paste0("grn",samp)
+              blueBand = paste0("blue",samp)
+              redBand = paste0("red",samp)
+              swir1Band = paste0("swir1",samp)
+              swir2Band = paste0("swir2",samp)
+              
+              nir = inData()$LS_dat[[nirBand]]/10000
+              swir1 = inData()$LS_dat[[swir1Band]]/10000
+              swir2 = inData()$LS_dat[[swir2Band]]/10000
+              green = inData()$LS_dat[[greenBand]]/10000
+              blue = inData()$LS_dat[[blueBand]]/10000
+              red = inData()$LS_dat[[redBand]]/10000
+              
+              # additional information for determining wetlands, thanks to
+              # http://www.sciencedirect.com/science/article/pii/S003442571300388X Huang et al 2014 RSE
+              # coefficients from
+              # http://www.sciencedirect.com/science/article/pii/0034425785901026 Crist et al 1985 RSE
+              
+              coefB = -0.1603
+              coefG = -0.2819
+              coefR = -0.4934
+              coefN = 0.7940
+              coefS1 = 0.0002
+              coefS2 = 0.1446
+              
+              tcg = coefB*blue + coefG*green + coefR*red + coefN*nir + coefS1*swir1 + coefS2*swir2
+              plotLimits = quantile(tcg, c(0.01, 0.99), na.rm=T)
+              
+              dt = data.table(date = strptime(inData()$LS_dat$date,format="%Y%j"), 
+                              tcg = tcg,
+                              doy = yday(strptime(inData()$LS_dat$date,format="%Y%j")))
+              
+              
+              if(input$LSplotType == "Years"){
+                theLSplot = ggplot(data = dt, aes(x=date, y=tcg)) + geom_point() +
+                  theme_bw() + 
+                  theme(axis.text = element_text(size = 14, face="bold")) +
+                  ylim(plotLimits)
+                
+                
+              }else if(input$LSplotType == "DoY"){
+                theLSplot = ggplot(data = dt, aes(x=doy, y=tcg)) + geom_point() +
+                  theme_bw() + 
+                  theme(axis.text = element_text(size = 14, face="bold")) +
+                  ylim(plotLimits)
+                
+              }
+              
+            }else if(band == "tcw"){
+              
+              nirBand = paste0("nir",samp)
+              greenBand = paste0("grn",samp)
+              blueBand = paste0("blue",samp)
+              redBand = paste0("red",samp)
+              swir1Band = paste0("swir1",samp)
+              swir2Band = paste0("swir2",samp)
+              
+              nir = inData()$LS_dat[[nirBand]]/10000
+              swir1 = inData()$LS_dat[[swir1Band]]/10000
+              swir2 = inData()$LS_dat[[swir2Band]]/10000
+              green = inData()$LS_dat[[greenBand]]/10000
+              blue = inData()$LS_dat[[blueBand]]/10000
+              red = inData()$LS_dat[[redBand]]/10000
+              
+              # additional information for determining wetlands, thanks to
+              # http://www.sciencedirect.com/science/article/pii/S003442571300388X Huang et al 2014 RSE
+              # coefficients from
+              # http://www.sciencedirect.com/science/article/pii/0034425785901026 Crist et al 1985 RSE
+              
+              coefB = 0.0315
+              coefG = 0.2021
+              coefR = 0.3102
+              coefN = 0.1594
+              coefS1 = 0.6806
+              coefS2 = 0.6109
+              
+              tcw = coefB*blue + coefG*green + coefR*red + coefN*nir + coefS1*swir1 + coefS2*swir2
+              plotLimits = quantile(tcw, c(0.01, 0.99), na.rm=T)
+              
+              dt = data.table(date = strptime(inData()$LS_dat$date,format="%Y%j"), 
+                              tcw = tcw,
+                              doy = yday(strptime(inData()$LS_dat$date,format="%Y%j")))
+              
+              
+              if(input$LSplotType == "Years"){
+                theLSplot = ggplot(data = dt, aes(x=date, y=tcw)) + geom_point() +
+                  theme_bw() + 
+                  theme(axis.text = element_text(size = 14, face="bold")) +
+                  ylim(plotLimits)
+                
+                
+              }else if(input$LSplotType == "DoY"){
+                theLSplot = ggplot(data = dt, aes(x=doy, y=tcw)) + geom_point() +
+                  theme_bw() + 
+                  theme(axis.text = element_text(size = 14, face="bold")) +
+                  ylim(plotLimits)
+                
+              }
+              
+            }else if(band == "tcw-tcg"){
+              
+              nirBand = paste0("nir",samp)
+              greenBand = paste0("grn",samp)
+              blueBand = paste0("blue",samp)
+              redBand = paste0("red",samp)
+              swir1Band = paste0("swir1",samp)
+              swir2Band = paste0("swir2",samp)
+              
+              nir = inData()$LS_dat[[nirBand]]/10000
+              swir1 = inData()$LS_dat[[swir1Band]]/10000
+              swir2 = inData()$LS_dat[[swir2Band]]/10000
+              green = inData()$LS_dat[[greenBand]]/10000
+              blue = inData()$LS_dat[[blueBand]]/10000
+              red = inData()$LS_dat[[redBand]]/10000
+              
+              # additional information for determining wetlands, thanks to
+              # http://www.sciencedirect.com/science/article/pii/S003442571300388X Huang et al 2014 RSE
+              # coefficients from
+              # http://www.sciencedirect.com/science/article/pii/0034425785901026 Crist et al 1985 RSE
+              
+              # wetness
+              coefB = 0.0315
+              coefG = 0.2021
+              coefR = 0.3102
+              coefN = 0.1594
+              coefS1 = 0.6806
+              coefS2 = 0.6109
+              
+              tcw = coefB*blue + coefG*green + coefR*red + coefN*nir + coefS1*swir1 + coefS2*swir2
+              
+              # greenness
+              coefB = -0.1603
+              coefG = -0.2819
+              coefR = -0.4934
+              coefN = 0.7940
+              coefS1 = 0.0002
+              coefS2 = 0.1446
+              
+              tcg = coefB*blue + coefG*green + coefR*red + coefN*nir + coefS1*swir1 + coefS2*swir2
+              
+              tcwgd = tcw-tcg
+              
+              plotLimits = quantile(tcwgd, c(0.01, 0.99), na.rm=T)
+              
+              dt = data.table(date = strptime(inData()$LS_dat$date,format="%Y%j"), 
+                              tcwgd = tcwgd,
+                              doy = yday(strptime(inData()$LS_dat$date,format="%Y%j")))
+              
+              
+              if(input$LSplotType == "Years"){
+                theLSplot = ggplot(data = dt, aes(x=date, y=tcwgd)) + geom_point() +
+                  theme_bw() + 
+                  theme(axis.text = element_text(size = 14, face="bold")) +
+                  ylim(plotLimits)
+                
+                
+              }else if(input$LSplotType == "DoY"){
+                theLSplot = ggplot(data = dt, aes(x=doy, y=tcwgd)) + geom_point() +
+                  theme_bw() + 
+                  theme(axis.text = element_text(size = 14, face="bold")) +
+                  ylim(plotLimits)
+                
+              }
+              
             }else{
               
               bandToPlot =paste0(band,samp)
@@ -805,7 +1041,7 @@ server <- function(input, output, session) {
         		rgbTif =brick(inData()$tifsFull[grep(input$filepick,inData()$tifsFull)]) 
         		# world view has different band assignments
         		if(input$falseCol == "321"){
-        			if(grepl("WV02|WV03",input$filepick)){
+        			if(grepl("WV03",input$filepick)){
         			  plotRGB(rgbTif,
         							  r=5,g=3,b=2, stretch = 'lin')
         			}else if(grepl("WV01",input$filepick)){
@@ -817,7 +1053,7 @@ server <- function(input, output, session) {
         			}
         		}
         		if(input$falseCol == "432"){
-        		  if(grepl("WV02|WV03",input$filepick)){
+        		  if(grepl("WV03",input$filepick)){
         		    plotRGB(rgbTif,
         		            r=7,g=5,b=2, stretch = 'lin')
         		  }else if(grepl("WV01",input$filepick)){
@@ -850,7 +1086,7 @@ server <- function(input, output, session) {
         		
         		rgbTif = crop(rgbTif, miniExt)
         		
-        		if(grepl("WV02|WV03",input$filepick)){
+        		if(grepl("WV03",input$filepick)){
         		  NDVI = brick(calc(rgbTif[[c(7,5)]], f_NDVI))
         		}else{
         		  NDVI = brick(calc(rgbTif[[c(4,3)]], f_NDVI))
@@ -859,6 +1095,7 @@ server <- function(input, output, session) {
         
         		plotRGB(NDVI,
         						r=1,g=1,b=1, stretch="lin")
+        		# just grabbing the legend
         		plot(NDVI, legend.only = T,
         				 col = gray.colors(100),
         				 smallplot = c(0.9,0.92,0.3,0.7))
@@ -880,7 +1117,7 @@ server <- function(input, output, session) {
         		
         		miniExt = extent(c(xext-100, xext+100, yext-100, yext+100))
         		
-        		if(grepl("WV02|WV03",input$filepick)){
+        		if(grepl("WV03",input$filepick)){
           		# before cropping, set stretch
           		rast_b = linstretch(raster(zoomTif, layer=2), minmax = quantile(raster(zoomTif, layer=2), c(0.02,0.98)))
           		rast_g = linstretch(raster(zoomTif, layer=3), minmax = quantile(raster(zoomTif, layer=3), c(0.02,0.98)))
@@ -950,9 +1187,69 @@ server <- function(input, output, session) {
       		lats = mean(theExt@ymin, theExt@ymax)
       		lons = mean(theExt@xmin, theExt@xmax)
       		paste0("LAT: ", round(lats,3), "   LON: ", round(lons,3))
+    		
+      		
     	  }
     	})
-  		
+
+    	output$coords_aea = renderText({
+    	  if(!is.null(inData()) & rowReady){
+    	    
+    	    theExt_aea = extent(spTransform(inData()$sampleShapes[inData()$inSamps[row$i],],CRSobj = crs("+proj=aea +lat_1=55 +lat_2=65 +lat_0=50 +lon_0=-154 +x_0=0 +y_0=0 +datum=WGS84 +units=m +nodefs")))
+    	    lats_aea = mean(theExt_aea@ymin, theExt_aea@ymax)
+    	    lons_aea = mean(theExt_aea@xmin, theExt_aea@xmax)
+    	    paste0("X: ", round(lons_aea),"     Y: ",round(lats_aea))
+    	    
+    	    
+    	  }
+    	})
+    	
+    	output$wetcomb = renderText({
+    	  if(!is.null(inData()) & rowReady){
+    	    
+    	    theExt_aea = extent(spTransform(inData()$sampleShapes[inData()$inSamps[row$i],],CRSobj = crs("+proj=aea +lat_1=55 +lat_2=65 +lat_0=50 +lon_0=-154 +x_0=0 +y_0=0 +datum=WGS84 +units=m +nodefs")))
+    	    #lats_aea = mean(theExt_aea@ymin, theExt_aea@ymax)
+    	    #lons_aea = mean(theExt_aea@xmin, theExt_aea@xmax)
+    	    
+    	    wetl = try(extract(alaskaWetland, theExt_aea), silent=T)
+    	    if(class(wetl) == "try-error"){
+    	      print("Not in Alaska")
+    	    }else{
+    	      wetl_out = "No Data"
+    	      wetl_1 = wetl %/% 5
+    	      wetl_2 = wetl %% 5
+    	      if(wetl_1 == 1) wetl_out = "estuarine emergent"
+    	      if(wetl_1 == 2) wetl_out = "estuarine shrub"
+    	      if(wetl_1 == 3) wetl_out = "estuarine forest"
+    	      if(wetl_1 == 4) wetl_out = "riverine emergent"
+    	      if(wetl_1 == 5) wetl_out = "lacustrine emergent"
+    	      if(wetl_1 == 6) wetl_out = "palustrine moss/lichen"
+    	      if(wetl_1 == 7) wetl_out = "palustrine emergent"
+    	      if(wetl_1 == 8) wetl_out = "palustrine shrub"
+    	      if(wetl_1 == 9) wetl_out = "palustrine forest"
+    	      #if(wetl_1 == 10) wetl_out = "other"
+
+    	      if(wetl_2 == 1) wetl_out = paste0(wetl_out, " - perm flood")
+    	      if(wetl_2 == 2) wetl_out = paste0(wetl_out, " - reg exposed")
+    	      if(wetl_2 == 3) wetl_out = paste0(wetl_out, " - seasonal")
+    	      if(wetl_2 == 4) wetl_out = paste0(wetl_out, " - intermittent")
+    	      if(wetl_2 == 0 & wetl != 50) wetl_out = paste0(wetl_out, " - saturated")
+
+    	      if(wetl == 46) wetl_out = "decid forest"
+    	      if(wetl == 47) wetl_out = "barren"
+    	      if(wetl == 48) wetl_out = "uplands"
+    	      if(wetl == 49) wetl_out = "ocean"
+    	      
+    	      print(paste0(wetl, ":",wetl_out))
+    	      
+    	    }
+    	    
+    	    #paste0("X: ", round(lons_aea),"     Y: ",round(lats_aea))
+    	    
+    	    
+    	  }
+    	})
+    	  		
 }
 
 	 
