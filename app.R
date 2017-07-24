@@ -169,7 +169,7 @@ ui <- fluidPage(
    		fluidRow( ## Landsat data display
    		  h3("Landsat data"),
    		  radioButtons(inputId = "LSband", label="LS Band", inline=T, 
-   		               choices = c("blue", "grn", "red", "nir", "swir1", "swir2", "bt", "ndvi", "ndwi", "evi-nbr", "tcb", "tcg", "tcw", "tcw-tcg")),
+   		               choices = c("blue", "grn", "red", "nir", "swir1", "swir2", "bt", "ndvi", "ndwi", "lswi", "evi-nbr", "tcb", "tcg", "tcw", "tcw-tcg")),
    		  radioButtons(inputId = "LSplotType", label="Plot Type", inline=T, 
    		               choices = c("Years", "DoY")),
    		  plotOutput("LSplot", height=330)
@@ -220,7 +220,7 @@ ui <- fluidPage(
 
 server <- function(input, output, session) {
 
-	setwd("F:/Dropbox/LCSC/ABoVE/ABoVE_training/")
+  setwd("F:/Dropbox/LCSC/ABoVE/ABoVE_training/")
   #setwd("C:/Users/wanga/Dropbox/LCSC/ABoVE/buildTraining/")
   
   availableTiles = reactive({
@@ -794,6 +794,40 @@ server <- function(input, output, session) {
                 
               }
               
+            }else if(band == "lswi"){
+              
+              nirBand = paste0("nir",samp)
+              swir1Band = paste0("grn",samp)
+              
+              nir = inData()$LS_dat[[nirBand]]/10000
+              swir1 = inData()$LS_dat[[swir1Band]]/10000
+              
+              # additional information for determining wetlands, thanks to
+              # http://onlinelibrary.wiley.com/doi/10.1002/2014WR015634/full
+              
+              lswi = (nir - swir1) / (nir + swir1)
+              plotLimits = quantile(lswi, c(0.01, 0.99), na.rm=T)
+              
+              dt = data.table(date = strptime(inData()$LS_dat$date,format="%Y%j"), 
+                              lswi = lswi,
+                              doy = yday(strptime(inData()$LS_dat$date,format="%Y%j")))
+              
+              
+              if(input$LSplotType == "Years"){
+                theLSplot = ggplot(data = dt, aes(x=date, y=lswi)) + geom_point() +
+                  theme_bw() + 
+                  theme(axis.text = element_text(size = 14, face="bold")) +
+                  ylim(plotLimits)
+                
+                
+              }else if(input$LSplotType == "DoY"){
+                theLSplot = ggplot(data = dt, aes(x=doy, y=lswi)) + geom_point() +
+                  theme_bw() + 
+                  theme(axis.text = element_text(size = 14, face="bold")) +
+                  ylim(plotLimits)
+                
+              }
+              
             }else if(band == "tcb"){
               
               nirBand = paste0("nir",samp)
@@ -1055,6 +1089,9 @@ server <- function(input, output, session) {
         			}else if(grepl("WV01",input$filepick)){
         			  plotRGB(rgbTif,
         			          r=1,g=1,b=1, stretch = 'lin')
+        			}else if(grepl("WV02",input$filepick) & nlayers(rgbTif) > 4){
+        			  plotRGB(rgbTif,
+        			          r=4,g=3,b=2, stretch = 'lin')
         			}else{
         			  plotRGB(rgbTif,
         			          r=3,g=2,b=1, stretch = 'lin')
@@ -1064,6 +1101,9 @@ server <- function(input, output, session) {
         		  if(grepl("WV03",input$filepick)){
         		    plotRGB(rgbTif,
         		            r=7,g=5,b=2, stretch = 'lin')
+        		  }else if(grepl("WV02",input$filepick) & nlayers(rgbTif) > 4){
+        		    plotRGB(rgbTif,
+        		            r=6,g=4,b=3, stretch = 'lin')
         		  }else if(grepl("WV01",input$filepick)){
         		    plotRGB(rgbTif,
         		            r=1,g=1,b=1, stretch = 'lin')
@@ -1096,6 +1136,8 @@ server <- function(input, output, session) {
         		
         		if(grepl("WV03",input$filepick)){
         		  NDVI = brick(calc(rgbTif[[c(7,5)]], f_NDVI))
+        		}else if(grepl("WV02",input$filepick) & nlayers(rgbTif) > 4){
+        		  NDVI = brick(calc(rgbTif[[c(6,4)]], f_NDVI))
         		}else{
         		  NDVI = brick(calc(rgbTif[[c(4,3)]], f_NDVI))
         		}
@@ -1135,6 +1177,16 @@ server <- function(input, output, session) {
           		zoomTif_str = stack(rast_b, rast_g, rast_r, rast_n)
           		
           		zoomTif = crop(zoomTif_str, miniExt)
+        		}else if(grepl("WV02",input$filepick) & nlayers(zoomTif) > 4){
+        		  # before cropping, set stretch
+        		  rast_b = linstretch(raster(zoomTif, layer=2), minmax = quantile(raster(zoomTif, layer=2), c(0.02,0.98)))
+        		  rast_g = linstretch(raster(zoomTif, layer=3), minmax = quantile(raster(zoomTif, layer=3), c(0.02,0.98)))
+        		  rast_r = linstretch(raster(zoomTif, layer=4), minmax = quantile(raster(zoomTif, layer=4), c(0.02,0.98)))
+        		  rast_n = linstretch(raster(zoomTif, layer=6), minmax = quantile(raster(zoomTif, layer=6), c(0.02,0.98)))
+        		  
+        		  zoomTif_str = stack(rast_b, rast_g, rast_r, rast_n)
+        		  
+        		  zoomTif = crop(zoomTif_str, miniExt)
         		}else{
         		  # before cropping, set stretch
         		  rast_b = linstretch(raster(zoomTif, layer=1), minmax = quantile(raster(zoomTif, layer=1), c(0.02,0.98)))
@@ -1150,11 +1202,11 @@ server <- function(input, output, session) {
         		# world view has different band assignments
         		if(input$falseCol == "321"){
         		    plotRGB(zoomTif,
-        		            r=3,g=2,b=1, stretch = 'lin')
+        		            r=3,g=2,b=1)
         		}
         		if(input$falseCol == "432"){
         		    plotRGB(zoomTif,
-        		            r=4,g=3,b=2, stretch = 'lin')
+        		            r=4,g=3,b=2)
         		}
         		
         		plot(spTransform(inData()$sampleShapes[inData()$inSamps[isolate(row$i)],],CRSobj = crs(zoomTif)), col=NA, border = "red", add=T)
