@@ -186,9 +186,11 @@ ui <- fluidPage(
    		  plotOutput("LSplot", height=330)
    		),
    		fluidRow( # Console for data selection
-   		  column(width = 6,
+   		  column(width = 4,
    		         radioButtons(inputId = "falseCol", label="Band Composite", choices=c("321","432"))),
-   		  column(width = 6,
+   		  column(width = 4,
+   		         radioButtons(inputId = "zoomChoice", label="Zoom Choice", choices=c("z321","z432", "elev", "aspect", "slope"))),
+   		  column(width = 4,
    		         uiOutput("filepick"),
    		         textOutput("coords"),
    		         textOutput("coords_aea"),
@@ -248,8 +250,10 @@ server <- function(input, output, session) {
                           pattern="filtered")
     tileLS = sapply(strsplit(tileLSIn,"_"), "[[",1)
     
+    asterIn = list.files("../../../ABoVE_samples/ASTER")
+    
     # Get the intersection and only present tiles that have all their data set up
-    return(Reduce(intersect, list(tileShapes, tileSamples, tileLS)))
+    return(Reduce(intersect, list(tileShapes, tileSamples, tileLS,asterIn)))
   })
   
   output$tilepick = renderUI({
@@ -263,11 +267,13 @@ server <- function(input, output, session) {
     
     if(!is.null(input$tilepick)){
       tifPath  = paste0("../../../ABoVE_samples/stamps/EOSD_",input$tilepick, "_sample")
+      asterPath = paste0("../../../ABoVE_samples/ASTER/",input$tilepick)
       sampleShapes = readOGR(dsn = paste0('../../../ABoVE_samples/shapefiles/',input$tilepick),
                              layer = paste0("EOSD_",input$tilepick,"_sample"))
       LS_dat = fread(paste0("../../../ABoVE_samples/LS/",input$tilepick,"_LS_filtered.csv"))
                             
       tifs = list.files(tifPath, full.names=T, pattern="tif")
+      astertifs = list.files(asterPath, full.names=T, pattern="tif")
       
       tifsPan  = tifs[grepl("pan",list.files(tifPath,
                                              full.names=T,
@@ -278,10 +284,11 @@ server <- function(input, output, session) {
       tifsMin  = tifs[grepl("min",list.files(tifPath,
                                              full.names=T,
                                              pattern="tif"))]
+      
       dt = paste0("../buildTraining/",input$tilepick,"_trainingdt.csv")
       inSamps = sort(as.numeric(unique(sapply(strsplit(tifsFull,"_pp|_yd"), "[[", 2))))
                             
-      return(list(sampleShapes=sampleShapes, LS_dat=LS_dat, tifsPan=tifsPan, tifsFull=tifsFull,tifsMin=tifsMin,dt=dt,inSamps=inSamps))
+      return(list(sampleShapes=sampleShapes, LS_dat=LS_dat, tifsPan=tifsPan, tifsFull=tifsFull,tifsMin=tifsMin,dt=dt,inSamps=inSamps, astertifs = astertifs))
     }
     })
   
@@ -390,6 +397,7 @@ server <- function(input, output, session) {
   	  }
   	})
    
+  	
     
     	# pickers
     	
@@ -1223,6 +1231,10 @@ server <- function(input, output, session) {
     	    
     	  
         		zoomTif =brick(inData()$tifsFull[grep(input$filepick,inData()$tifsFull)]) 
+        		astertif = try(brick(inData()$astertifs[inData()$inSamps[isolate(row$i)]]))
+        		print(inData()$astertifs)
+        		print(inData()$inSamps[isolate(row$i)])
+        		
         		# get center of extent, then go back out 100
         		xext = extent(zoomTif)@xmax/2 + extent(zoomTif)@xmin/2
         		yext = extent(zoomTif)@ymax/2 + extent(zoomTif)@ymin/2
@@ -1261,14 +1273,39 @@ server <- function(input, output, session) {
         		  zoomTif = crop(zoomTif_str, miniExt)
         		}
         		
-        		# world view has different band assignments
-        		if(input$falseCol == "321"){
+        		if(input$zoomChoice == "z321"){
         		    plotRGB(zoomTif,
         		            r=3,g=2,b=1, stretch = "lin")
         		}
-        		if(input$falseCol == "432"){
+        		if(input$zoomChoice == "z432"){
         		    plotRGB(zoomTif,
         		            r=4,g=3,b=2, stretch = "lin")
+        		}
+        		if(input$zoomChoice == "elev"){
+        		  plotRGB(astertif,
+        		          r=1,g=1,b=1, stretch="lin")
+        		  # just grabbing the legend
+        		  plot(astertif,1, legend.only = T,
+        		       col = gray.colors(100),
+        		       smallplot = c(0.9,0.92,0.3,0.7))
+        		}
+        		if(input$zoomChoice == "aspect"){
+        		  plotRGB(astertif,
+        		          r=2,g=2,b=2, stretch="lin")
+        		  # just grabbing the legend
+        		  plot(astertif,2, legend.only = T,
+        		       col = gray.colors(100),
+        		       smallplot = c(0.9,0.92,0.3,0.7))
+        		  
+        		}
+        		if(input$zoomChoice == "slope"){
+        		  plotRGB(astertif,
+        		          r=3,g=3,b=3, stretch="lin")
+        		  # just grabbing the legend
+        		  plot(astertif, 3, legend.only = T,
+        		       col = gray.colors(100),
+        		       smallplot = c(0.9,0.92,0.3,0.7))
+        		  
         		}
         		
         		plot(spTransform(inData()$sampleShapes[inData()$inSamps[isolate(row$i)],],CRSobj = crs(zoomTif)), col=NA, border = "red", add=T)
