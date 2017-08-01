@@ -102,6 +102,17 @@ ui <- fluidPage(
 	   									 label = "Dense"),
 	   			actionButton(inputId = "resetDensity",
 	   			             label = "Reset")
+	   		),fluidRow(
+	   		  hr(),
+	   		  p("UNDERSTORY (if open/sparse forest)"),
+	   		  actionButton(inputId = "isUnderBare",
+	   		               label = "Bare"),
+	   		  actionButton(inputId = "isUnderMoss",
+	   		               label = "Moss/Lichen"),
+	   		  actionButton(inputId = "isUnderVasc",
+	   		               label = "Grass/Shrub"),
+	   		  actionButton(inputId = "resetUnder",
+	   		               label = "Reset")
 	   		),
 	   		fluidRow(
 	   			hr(),
@@ -312,6 +323,7 @@ server <- function(input, output, session) {
  																					phenotype = 0,
  																					leafType = 0,
  																					density = 0,
+ 																					under = 0,
  																					wetlandFlag = 0,
  																					landUse = 0,
  																					year = NA,
@@ -338,6 +350,7 @@ server <- function(input, output, session) {
  			                         phenotype = rep(0, length(inData()$inSamps)),
  			                         leafType = rep(0, length(inData()$inSamps)),
  			                         density = rep(0, length(inData()$inSamps)),
+ 			                         under = rep(0, length(inData()$inSamps)),
  			                         wetlandFlag = rep(0, length(inData()$inSamps)),
  			                         landUse = rep(0, length(inData()$inSamps)),
  			                         year = rep(NA, length(inData()$inSamps)),
@@ -418,6 +431,7 @@ server <- function(input, output, session) {
       	 		lPheno = switch(therow$phenotype+1,"No Label", "Deciduous", "Evergreen","Mixed")
       	 		lLeaf = switch(therow$leafType+1,"No Label", "Broad", "Needle","Mixed")
       	 		lDense = 	switch(therow$density+1,"No Label","Sparse", "Open","Dense")
+      	 		lUnder = 	switch(therow$under+1,"No Label","Bare", "Moss","Vascular")
       	 		lWet = switch(therow$wetlandFlag+1,"No Label","Not Wetland","Wetland")
       	 		lUse = switch(therow$landUse+1,"No Label","Urban","Agriculture" ,"Pasture", "Timber", "Recovery")
       	 		lConf = switch(therow$confidence+1,"No Label","Low","Medium" ,"High")
@@ -430,6 +444,7 @@ server <- function(input, output, session) {
       	 									 phenotype = lPheno,
       	 									 leafType = lLeaf,
       	 									 density = lDense,
+      	 									 under = lUnder,
       	 									 wetlandFlag = lWet,
       	 									 landUse = lUse,
       	 									 confidence = lConf,
@@ -468,6 +483,7 @@ server <- function(input, output, session) {
     	
     	
     	# all them buttons
+    	## SURFACE TYPE
     	observeEvent(input$isWater,
     							 {
     							   if(rowReady){
@@ -498,6 +514,8 @@ server <- function(input, output, session) {
     	                 row$flags[row$i,"surfaceType"]=0
     	               }
     	             })
+    	
+    	## VEG FORM
     	observeEvent(input$isMoss,
     							 {
     							   if(rowReady){
@@ -532,78 +550,37 @@ server <- function(input, output, session) {
     	                 row$flags[row$i,"vegForm"]=0
     	               }
     	             })
-    	observeEvent(input$isSparse,
-    	             {
-    	               if(rowReady){
-    	                  row$flags[row$i,"density"]=1
-    	                  row$flags[row$i,"surfaceType"]=3
-    	               }
-    	             })
-    	observeEvent(input$isOpen,
-    							 {
-    							   if(rowReady){
-    							 	    row$flags[row$i,"density"]=2
-    							 	    row$flags[row$i,"surfaceType"]=3
-    							   }
-    							 })
-    	observeEvent(input$isDense,
-    							 {
-    							   if(rowReady){
-    							 	    row$flags[row$i,"density"]=3
-    							 	    row$flags[row$i,"surfaceType"]=3
-    							   }
-    							 })
-    	observeEvent(input$resetDensity,
-    	             {
-    	               if(rowReady){
-    	                 row$flags[row$i,"density"]=0
-    	               }
-    	             })
-    	observeEvent(input$isDry,
-    							 {
-    							   if(rowReady){
-    							 	    row$flags[row$i,"wetlandFlag"]=1
-    							   }
-    							 })
-    	observeEvent(input$isWet,
-    							 {
-    							   if(rowReady){
-    							 	    row$flags[row$i,"wetlandFlag"]=2
-    							   }
-    							 })
-    	observeEvent(input$resetWet,
-    	             {
-    	               if(rowReady){
-    	                 row$flags[row$i,"wetlandFlag"]=0
-    	               }
-    	             })
+    	
+    	## PHENOTYPE
     	observeEvent(input$DBF,
-    							 {
-    							   if(rowReady){
-    							 	    row$flags[row$i,"phenotype"]=1
-    							 	    row$flags[row$i,"surfaceType"]=3
-    							   }
-    							 })
+    	             {
+    	               if(rowReady){
+    	                 row$flags[row$i,"phenotype"]=1
+    	                 row$flags[row$i,"surfaceType"]=3
+    	               }
+    	             })
     	observeEvent(input$ENF,
-    							 {
-    							   if(rowReady){
-    							 	    row$flags[row$i,"phenotype"]=2
-    							 	    row$flags[row$i,"surfaceType"]=3
-    							   }
-    							 })
+    	             {
+    	               if(rowReady){
+    	                 row$flags[row$i,"phenotype"]=2
+    	                 row$flags[row$i,"surfaceType"]=3
+    	               }
+    	             })
     	observeEvent(input$MXF,
-    							 {
-    							   if(rowReady){
-    							 	    row$flags[row$i,"phenotype"]=3
-    							 	    row$flags[row$i,"surfaceType"]=3
-    							   }
-    							 })
+    	             {
+    	               if(rowReady){
+    	                 row$flags[row$i,"phenotype"]=3
+    	                 row$flags[row$i,"surfaceType"]=3
+    	               }
+    	             })
     	observeEvent(input$resetPheno,
     	             {
     	               if(rowReady){
     	                 row$flags[row$i,"phenotype"]=0
     	               }
     	             })
+    	
+    	## LEAF TYPE
     	observeEvent(input$isBroad,
     	             {
     	               if(rowReady){
@@ -631,6 +608,87 @@ server <- function(input, output, session) {
     	                 row$flags[row$i,"leafType"]=0
     	               }
     	             })
+    	
+    	## DENSITY
+    	observeEvent(input$isSparse,
+    	             {
+    	               if(rowReady){
+    	                  row$flags[row$i,"density"]=1
+    	                  row$flags[row$i,"surfaceType"]=3
+    	               }
+    	             })
+    	observeEvent(input$isOpen,
+    							 {
+    							   if(rowReady){
+    							 	    row$flags[row$i,"density"]=2
+    							 	    row$flags[row$i,"surfaceType"]=3
+    							   }
+    							 })
+    	observeEvent(input$isDense,
+    							 {
+    							   if(rowReady){
+    							 	    row$flags[row$i,"density"]=3
+    							 	    row$flags[row$i,"surfaceType"]=3
+    							   }
+    							 })
+    	observeEvent(input$resetDensity,
+    	             {
+    	               if(rowReady){
+    	                 row$flags[row$i,"density"]=0
+    	               }
+    	             })
+    	
+    	##UNDERSTORY
+    	observeEvent(input$isUnderBare,
+    	             {
+    	               if(rowReady){
+    	                 row$flags[row$i,"under"]=1
+    	               }
+    	             })
+    	observeEvent(input$isUnderMoss,
+    	             {
+    	               if(rowReady){
+    	                 row$flags[row$i,"under"]=2
+    	               }
+    	             })
+    	observeEvent(input$isUnderVasc,
+    	             {
+    	               if(rowReady){
+    	                 row$flags[row$i,"under"]=3
+    	               }
+    	             })
+    	observeEvent(input$resetUnder,
+    	             {
+    	               if(rowReady){
+    	                 row$flags[row$i,"under"]=0
+    	               }
+    	             })
+    	
+    	
+    	## WETLAND FLAG
+    	
+    	observeEvent(input$isDry,
+    							 {
+    							   if(rowReady){
+    							 	    row$flags[row$i,"wetlandFlag"]=1
+    							   }
+    							 })
+    	observeEvent(input$isWet,
+    							 {
+    							   if(rowReady){
+    							 	    row$flags[row$i,"wetlandFlag"]=2
+    							   }
+    							 })
+    	observeEvent(input$resetWet,
+    	             {
+    	               if(rowReady){
+    	                 row$flags[row$i,"wetlandFlag"]=0
+    	               }
+    	             })
+    	
+    	
+    	
+    	## LAND USE
     	observeEvent(input$isUrban,
     	             {
     	               if(rowReady){
@@ -667,6 +725,8 @@ server <- function(input, output, session) {
     	                 row$flags[row$i,"landUse"]=0
     	               }
     	             })
+    	
+    	## CONFIDENCE
     	observeEvent(input$highConfidence,
     	             {
     	               if(rowReady){
@@ -691,6 +751,8 @@ server <- function(input, output, session) {
     	                 row$flags[row$i,"confidence"]=0
     	               }
     	             })
+    	
+    	## SKIP
      	observeEvent(input$skipBox,
      							 {
      							   if(rowReady){
@@ -1202,11 +1264,11 @@ server <- function(input, output, session) {
         		# world view has different band assignments
         		if(input$falseCol == "321"){
         		    plotRGB(zoomTif,
-        		            r=3,g=2,b=1)
+        		            r=3,g=2,b=1, stretch = "lin")
         		}
         		if(input$falseCol == "432"){
         		    plotRGB(zoomTif,
-        		            r=4,g=3,b=2)
+        		            r=4,g=3,b=2, stretch = "lin")
         		}
         		
         		plot(spTransform(inData()$sampleShapes[inData()$inSamps[isolate(row$i)],],CRSobj = crs(zoomTif)), col=NA, border = "red", add=T)
