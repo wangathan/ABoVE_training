@@ -246,6 +246,11 @@ server <- function(input, output, session) {
                                pattern="EOSD")
     tileSamples = sapply(strsplit(tileSamplesIn, "_"), "[[",2)
     
+    # don't list completed tiles
+    tilesDoneIn = list.files("../buildTraining/completedDt/")
+    tilesDone = sapply(strsplit(tilesDoneIn, "_"),"[[",1)
+    tileSamples = tileSamples[!tileSamples %in% tilesDone]
+    
     tileLSIn = list.files("../../../ABoVE_samples/LS",
                           pattern="filtered")
     tileLS = sapply(strsplit(tileLSIn,"_"), "[[",1)
@@ -285,7 +290,7 @@ server <- function(input, output, session) {
                                              full.names=T,
                                              pattern="tif"))]
       
-      dt = paste0("../buildTraining/",input$tilepick,"_trainingdt.csv")
+      dt = paste0("../buildTraining/inProgress/",input$tilepick,"_trainingdt.csv")
       inSamps = sort(as.numeric(unique(sapply(strsplit(tifsFull,"_pp|_yd"), "[[", 2))))
                             
       return(list(sampleShapes=sampleShapes, LS_dat=LS_dat, tifsPan=tifsPan, tifsFull=tifsFull,tifsMin=tifsMin,dt=dt,inSamps=inSamps, astertifs = astertifs))
@@ -1232,8 +1237,7 @@ server <- function(input, output, session) {
     	  
         		zoomTif =brick(inData()$tifsFull[grep(input$filepick,inData()$tifsFull)]) 
         		astertif = try(brick(inData()$astertifs[inData()$inSamps[isolate(row$i)]]))
-        		print(inData()$astertifs)
-        		print(inData()$inSamps[isolate(row$i)])
+
         		
         		# get center of extent, then go back out 100
         		xext = extent(zoomTif)@xmax/2 + extent(zoomTif)@xmin/2
