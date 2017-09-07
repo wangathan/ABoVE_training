@@ -79,18 +79,18 @@ ui <- fluidPage(
 					actionButton(inputId = "resetPheno",
 					             label = "Reset")
 				),
-				fluidRow(
-				  hr(),
-				  p("LEAF TYPE"),
-				  actionButton(inputId = "isBroad",
-				               label = "Broadleaf"),
-				  actionButton(inputId = "isNeedle",
-				               label = "Needleleaf"),
-				  actionButton(inputId = "isMixedLeaf",
-				               label = "Mixed Leaf"),
-				  actionButton(inputId = "resetLeaf",
-				               label = "Reset")
-				),
+				# fluidRow(
+				#   hr(),
+				#   p("LEAF TYPE"),
+				#   actionButton(inputId = "isBroad",
+				#                label = "Broadleaf"),
+				#   actionButton(inputId = "isNeedle",
+				#                label = "Needleleaf"),
+				#   actionButton(inputId = "isMixedLeaf",
+				#                label = "Mixed Leaf"),
+				#   actionButton(inputId = "resetLeaf",
+				#                label = "Reset")
+				# ),
 	   		fluidRow(
 	   			hr(),
 	   			p("DENSITY"),
@@ -111,6 +111,8 @@ ui <- fluidPage(
 	   		               label = "Moss/Lichen"),
 	   		  actionButton(inputId = "isUnderVasc",
 	   		               label = "Grass/Shrub"),
+	   		  actionButton(inputId = "isUnderWater",
+	   		               label = "Water"),
 	   		  actionButton(inputId = "resetUnder",
 	   		               label = "Reset")
 	   		),
@@ -121,6 +123,8 @@ ui <- fluidPage(
 	   									 label = "Wetland"),
 	   			actionButton(inputId = "isDry",
 	   									 label = "Not Wetland"),
+	   			actionButton(inputId = "isSubmerged",
+	   			             label = "Submerged"),
 	   			actionButton(inputId = "resetWet",
 	   			             label = "Reset")
 	   		),
@@ -235,6 +239,7 @@ server <- function(input, output, session) {
 
   setwd("F:/Dropbox/LCSC/ABoVE/ABoVE_training/")
   #setwd("C:/Users/wanga/Dropbox/LCSC/ABoVE/buildTraining/")
+  #setwd("D:/Dropbox/LCSC/ABoVE/buildTraining/")
   
   availableTiles = reactive({
     
@@ -444,8 +449,8 @@ server <- function(input, output, session) {
       	 		lPheno = switch(therow$phenotype+1,"No Label", "Deciduous", "Evergreen","Mixed")
       	 		lLeaf = switch(therow$leafType+1,"No Label", "Broad", "Needle","Mixed")
       	 		lDense = 	switch(therow$density+1,"No Label","Sparse", "Open","Dense")
-      	 		lUnder = 	switch(therow$under+1,"No Label","Bare", "Moss","Vascular")
-      	 		lWet = switch(therow$wetlandFlag+1,"No Label","Not Wetland","Wetland")
+      	 		lUnder = 	switch(therow$under+1,"No Label","Bare", "Moss","Vascular", "Water")
+      	 		lWet = switch(therow$wetlandFlag+1,"No Label","Not Wetland","Wetland", "Submerged")
       	 		lUse = switch(therow$landUse+1,"No Label","Urban","Agriculture" ,"Pasture", "Timber", "Recovery")
       	 		lConf = switch(therow$confidence+1,"No Label","Low","Medium" ,"High")
       	 		lYear = therow$year
@@ -670,6 +675,12 @@ server <- function(input, output, session) {
     	                 row$flags[row$i,"under"]=3
     	               }
     	             })
+    	observeEvent(input$isUnderWater,
+    	             {
+    	               if(rowReady){
+    	                 row$flags[row$i,"under"]=4
+    	               }
+    	             })
     	observeEvent(input$resetUnder,
     	             {
     	               if(rowReady){
@@ -692,6 +703,12 @@ server <- function(input, output, session) {
     							 	    row$flags[row$i,"wetlandFlag"]=2
     							   }
     							 })
+    	observeEvent(input$isSubmerged,
+    	             {
+    	               if(rowReady){
+    	                 row$flags[row$i,"wetlandFlag"]=3
+    	               }
+    	             })
     	observeEvent(input$resetWet,
     	             {
     	               if(rowReady){
