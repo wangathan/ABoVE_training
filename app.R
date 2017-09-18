@@ -185,8 +185,11 @@ ui <- fluidPage(
    		  h3("Landsat data"),
    		  radioButtons(inputId = "LSband", label="LS Band", inline=T, 
    		               choices = c("blue", "grn", "red", "nir", "swir1", "swir2", "bt", "ndvi", "ndwi", "lswi", "evi-nbr", "tcb", "tcg", "tcw", "tcw-tcg")),
-   		  radioButtons(inputId = "LSplotType", label="Plot Type", inline=T, 
-   		               choices = c("Years", "DoY")),
+   		 # column(width=6,
+   		         radioButtons(inputId = "LSplotType", label="Plot Type", inline=T, 
+   		               choices = c("Years", "DoY")),#),
+   		  #column(width=6,
+   		 #        sliderInput("yearRange", label = "Year Range", min = 1984, max = 2014, value = c(1984, 2014))),
    		  plotOutput("LSplot", height=330)
    		),
    		fluidRow( # Console for data selection
@@ -240,6 +243,7 @@ server <- function(input, output, session) {
   setwd("F:/Dropbox/LCSC/ABoVE/ABoVE_training/")
   #setwd("C:/Users/wanga/Dropbox/LCSC/ABoVE/buildTraining/")
   #setwd("D:/Dropbox/LCSC/ABoVE/buildTraining/")
+  #setwd("/Users/leticia/Dropbox/LCSC/ABoVE/buildTraining")
   
   availableTiles = reactive({
     
@@ -254,16 +258,17 @@ server <- function(input, output, session) {
     # don't list completed tiles
     tilesDoneIn = list.files("../buildTraining/completedDt/")
     tilesDone = sapply(strsplit(tilesDoneIn, "_"),"[[",1)
-    tileSamples = tileSamples[!tileSamples %in% tilesDone]
+    #tileSamples = tileSamples[!tileSamples %in% tilesDone]
     
     tileLSIn = list.files("../../../ABoVE_samples/LS",
                           pattern="filtered")
     tileLS = sapply(strsplit(tileLSIn,"_"), "[[",1)
     
-    asterIn = list.files("../../../ABoVE_samples/ASTER")
+    #asterIn = list.files("../../../ABoVE_samples/ASTER")
     
     # Get the intersection and only present tiles that have all their data set up
-    return(Reduce(intersect, list(tileShapes, tileSamples, tileLS,asterIn)))
+    #return(Reduce(intersect, list(tileShapes, tileSamples, tileLS,asterIn)))
+    return(Reduce(intersect, list(tileShapes, tileSamples, tileLS)))
   })
   
   output$tilepick = renderUI({
@@ -802,21 +807,85 @@ server <- function(input, output, session) {
         
         if(!is.null(inData()) & rowReady){
             
-            samp =inData()$inSamps[row$i]
-            band = input$LSband
+          # determine band and sample
+          theSamp =inData()$inSamps[row$i]
+          band = input$LSband
+          
+          hasCoefs = file.exists(paste0("../../../ABoVE_samples/sample_coefs/",input$tilepick, "_sampled_coefs.csv"))
+          print(hasCoefs)
+          ### if we have coefficients, calculate some synthetic data to compare with the real data ### 
+          if(hasCoefs){
+            # get coefficients                                              
+            nmcoefs = c(rep("robust_a0_",7),                                
+                        rep("robust_c1_",7),                                   
+                        rep("robust_a1_",7),                                   
+                        rep("robust_b1_",7),                                   
+                        rep("robust_a2_",7),                                   
+                        rep("robust_b2_",7),                                   
+                        rep("robust_a3_",7),                                   
+                        rep("robust_b3_",7))                                   
+            bands = c("blue", "green", "red", "nir", "swir1", "swir2", "bt")
+            cb = data.table(nmcoefs=nmcoefs, bands=bands)                   
+            cb[,coefs_nms:=paste0(nmcoefs,bands)]                           
+            
+            # build synthetic time series                                                                  
+            getPredict = function(coefs_r){                                                                
+              w = 2*pi/365.25                                                                             
+              days = coefs_r$start:coefs_r$end                                                            
+              coefs = matrix(unlist(coefs_r[1,cb$coefs_nms,with=F]),                                      
+                             byrow=T,                                                                     
+                             ncol=7)                                                                      
+              
+              #coefs=as.matrix(coefs)                                                                     
+              
+              #rcoefs_names = paste0("robust_", coefs_names)                                              
+              #rcoefs = as.matrix(coefs_r[1,rcoefs_names,with=F])                                         
+              xmatr = cbind(rep(1,length(days)),                                                        
+                            days,                                                                         
+                            cos(w*days),                                                                  
+                            sin(w*days),                                                                  
+                            cos(2*w*days),                                                                
+                            sin(2*w*days),                                                                
+                            cos(3*w*days),                                                                
+                            sin(3*w*days))                                                                
+              
+              
+              synth = xmatr %*% coefs
+              
+              out = as.data.table(cbind.data.frame(days,synth))
+              
+              out[,date := ymd("0001-1-1") + days(days)]
+              out[,yr:=year(date)]
+              out[,doy:=yday(date)]
+              
+              setnames(out, c("days","blue","green","red","nir","swir1","swir2","bt", "date", "yr", "doy"))
+              out[,ndvi:=(nir-red)/(nir+red)]
+              return(out)
+              #   rsynth = xmatr %*% t(rcoefs)
+            }
+            
+            
+            # get synthetic data for sample, all models for that sample
+            coefs_dt = fread(paste0("../../../ABoVE_samples/sample_coefs/",input$tilepick, "_sampled_coefs.csv"))
+            sampleRows = coefs_dt[samp==theSamp,]
+            # for each sample, get the synthetic data of each time series
+            synthLS_l= lapply(1:nrow(sampleRows),function(i)getPredict(sampleRows[i,]))
+            synthLS = rbindlist(synthLS_l, use.names=T)
+            
+          }
 
             if(band == "evi-nbr"){
-              nirBand = paste0("nir",samp)
-              blueBand = paste0("blue",samp)
-              redBand = paste0("red", samp)
-              swirBand = paste0("swir2",samp)
+              nirBand = paste0("nir",theSamp)
+              blueBand = paste0("blue",theSamp)
+              redBand = paste0("red", theSamp)
+              swirBand = paste0("swir2",theSamp)
               
               nir = inData()$LS_dat[[nirBand]]/10000
               swir = inData()$LS_dat[[swirBand]]/10000
               red = inData()$LS_dat[[redBand]]/10000
               blue = inData()$LS_dat[[blueBand]]/10000
               
-              # a trick for distinguishing wetlands, thanks to Damien
+              # a trick for distinguishing wetlands, thanks to Damien - is summertime NBR - EVI > 0.4 or so?
               
               nbr = (nir - swir) / (nir + swir)
               
@@ -834,13 +903,43 @@ server <- function(input, output, session) {
                               doy = yday(strptime(inData()$LS_dat$date,format="%Y%j")))
               
               dtm = melt(dt, id.vars = c("date", "doy"))
+
+              # plotting synthetic data
               
+              if(hasCoefs){
+                nir = synthLS$nir/10000
+                swir = synthLS$swir2/10000
+                red = synthLS$red/10000
+                blue = synthLS$blue/10000
+                
+                # a trick for distinguishing wetlands, thanks to Damien - is summertime NBR - EVI > 0.4 or so?
+                
+                nbr = (nir - swir) / (nir + swir)
+                
+                G = 2.5; L = 1; C1 = 6; C2 = 7.5
+                
+                evi = G * (nir - red) / (nir + C1*red - C2*blue + L)
+                # evi[evi > 1] = 1
+                # evi[evi < -1] = -1
+                
+                dt = data.table(date = strptime(synthLS$date,format="%Y-%m-%d"), 
+                                evi = evi,
+                                nbr = nbr,
+                                doy = yday(strptime(synthLS$date,format="%Y-%m-%d")))
+                
+                synth_dtm = melt(dt, id.vars = c("date", "doy"))
+              }
+                            
               if(input$LSplotType == "Years"){
                 theLSplot = ggplot(data = dtm, aes(x=date, y=value, color= variable)) + geom_point() +
                   theme_bw() + 
                   scale_color_manual("", values=c("evi" = "darkgreen", "nbr" = "red"), guide=F) +
                   theme(axis.text = element_text(size = 14, face="bold")) +
-                  ylim(plotLimits)
+                  ylim(plotLimits)# + xlim(input$yearRange)
+                
+                if(hasCoefs){
+                  theLSplot = theLSplot + geom_line(data = synth_dtm, aes(x=date,y=value,color=variable), alpha = 0.3)
+                }
                 
                 
               }else if(input$LSplotType == "DoY"){
@@ -850,12 +949,15 @@ server <- function(input, output, session) {
                   theme(axis.text = element_text(size = 14, face="bold")) +
                   ylim(plotLimits)
                 
+                if(hasCoefs){
+                  theLSplot = theLSplot + geom_line(data = synth_dtm, aes(x=doy,y=value,color=variable), alpha=0.3)
+                }
               }
               
             }else if(band == "ndwi"){
               
-              nirBand = paste0("nir",samp)
-              greenBand = paste0("grn",samp)
+              nirBand = paste0("nir",theSamp)
+              greenBand = paste0("grn",theSamp)
               
               nir = inData()$LS_dat[[nirBand]]/10000
               green = inData()$LS_dat[[greenBand]]/10000
@@ -870,13 +972,28 @@ server <- function(input, output, session) {
                               ndwi = ndwi,
                               doy = yday(strptime(inData()$LS_dat$date,format="%Y%j")))
 
+              if(hasCoefs){
+                nir = synthLS$nir/10000
+                green = synthLS$green/10000
+                
+                ndwi = (green - nir) / (green + nir)
+
+                sdt = data.table(date = strptime(synthLS$date,format="%Y-%m-%d"), 
+                                ndwi = ndwi,
+                                doy = yday(strptime(synthLS$date,format="%Y-%m-%d")))
+                }
+              
               
               if(input$LSplotType == "Years"){
                 theLSplot = ggplot(data = dt, aes(x=date, y=ndwi)) + geom_point() +
                   theme_bw() + 
                   theme(axis.text = element_text(size = 14, face="bold")) +
-                  ylim(plotLimits)
+                  ylim(plotLimits)# + xlim(input$yearRange)
                 
+                if(hasCoefs){
+                  print(head(sdt))
+                  theLSplot = theLSplot + geom_line(data = sdt, aes(x=date,y=ndwi), alpha = 0.3)
+                }
                 
               }else if(input$LSplotType == "DoY"){
                 theLSplot = ggplot(data = dt, aes(x=doy, y=ndwi)) + geom_point() +
@@ -884,12 +1001,16 @@ server <- function(input, output, session) {
                   theme(axis.text = element_text(size = 14, face="bold")) +
                   ylim(plotLimits)
                 
+                if(hasCoefs){
+                  theLSplot = theLSplot + geom_line(data = sdt, aes(x=doy,y=ndwi), alpha = 0.3)
+                }
+                
               }
               
             }else if(band == "lswi"){
               
-              nirBand = paste0("nir",samp)
-              swir1Band = paste0("grn",samp)
+              nirBand = paste0("nir",theSamp)
+              swir1Band = paste0("swir1",theSamp)
               
               nir = inData()$LS_dat[[nirBand]]/10000
               swir1 = inData()$LS_dat[[swir1Band]]/10000
@@ -905,12 +1026,28 @@ server <- function(input, output, session) {
                               doy = yday(strptime(inData()$LS_dat$date,format="%Y%j")))
               
               
+              if(hasCoefs){
+                nir = synthLS$nir/10000
+                swir1 = synthLS$swir1/10000
+                
+                lswi = (nir - swir1) / (nir + swir1)
+                
+                sdt = data.table(date = strptime(synthLS$date,format="%Y-%m-%d"), 
+                                lswi = lswi,
+                                doy = yday(strptime(synthLS$date,format="%Y-%m-%d")))
+                
+              }
+              
+              
               if(input$LSplotType == "Years"){
                 theLSplot = ggplot(data = dt, aes(x=date, y=lswi)) + geom_point() +
                   theme_bw() + 
                   theme(axis.text = element_text(size = 14, face="bold")) +
-                  ylim(plotLimits)
+                  ylim(plotLimits)# + xlim(input$yearRange)
                 
+                if(hasCoefs){
+                  theLSplot = theLSplot + geom_line(data = sdt, aes(x=date,y=lswi), alpha = 0.3)
+                }
                 
               }else if(input$LSplotType == "DoY"){
                 theLSplot = ggplot(data = dt, aes(x=doy, y=lswi)) + geom_point() +
@@ -918,16 +1055,19 @@ server <- function(input, output, session) {
                   theme(axis.text = element_text(size = 14, face="bold")) +
                   ylim(plotLimits)
                 
+                if(hasCoefs){
+                  theLSplot = theLSplot + geom_line(data = sdt, aes(x=doy,y=lswi), alpha = 0.3)
+                }
               }
               
             }else if(band == "tcb"){
               
-              nirBand = paste0("nir",samp)
-              greenBand = paste0("grn",samp)
-              blueBand = paste0("blue",samp)
-              redBand = paste0("red",samp)
-              swir1Band = paste0("swir1",samp)
-              swir2Band = paste0("swir2",samp)
+              nirBand = paste0("nir",theSamp)
+              greenBand = paste0("grn",theSamp)
+              blueBand = paste0("blue",theSamp)
+              redBand = paste0("red",theSamp)
+              swir1Band = paste0("swir1",theSamp)
+              swir2Band = paste0("swir2",theSamp)
               
               nir = inData()$LS_dat[[nirBand]]/10000
               swir1 = inData()$LS_dat[[swir1Band]]/10000
@@ -955,13 +1095,35 @@ server <- function(input, output, session) {
                               tcb = tcb,
                               doy = yday(strptime(inData()$LS_dat$date,format="%Y%j")))
               
+              if(hasCoefs){
+                nir = synthLS$nir/10000
+                swir1 = synthLS$swir1/10000
+                swir2 = synthLS$swir2/10000
+                green = synthLS$green/10000
+                blue = synthLS$blue/10000
+                red = synthLS$red/10000
+                
+                # additional information for determining wetlands, thanks to
+                # http://www.sciencedirect.com/science/article/pii/S003442571300388X Huang et al 2014 RSE
+                # coefficients from
+                # http://www.sciencedirect.com/science/article/pii/0034425785901026 Crist et al 1985 RSE
+                
+                tcb = coefB*blue + coefG*green + coefR*red + coefN*nir + coefS1*swir1 + coefS2*swir2
+                sdt = data.table(date = strptime(synthLS$date,format="%Y-%m-%d"), 
+                                tcb = tcb,
+                                doy = yday(strptime(synthLS$date,format="%Y-%m-%d")))
+              }
+              
               
               if(input$LSplotType == "Years"){
                 theLSplot = ggplot(data = dt, aes(x=date, y=tcb)) + geom_point() +
                   theme_bw() + 
                   theme(axis.text = element_text(size = 14, face="bold")) +
-                  ylim(plotLimits)
+                  ylim(plotLimits)# + xlim(input$yearRange)
                 
+                if(hasCoefs){
+                  theLSplot = theLSplot + geom_line(data = sdt, aes(x=date,y=tcb), alpha = 0.3)
+                }
                 
               }else if(input$LSplotType == "DoY"){
                 theLSplot = ggplot(data = dt, aes(x=doy, y=tcb)) + geom_point() +
@@ -969,16 +1131,19 @@ server <- function(input, output, session) {
                   theme(axis.text = element_text(size = 14, face="bold")) +
                   ylim(plotLimits)
                 
+                if(hasCoefs){
+                  theLSplot = theLSplot + geom_line(data = sdt, aes(x=doy,y=tcb), alpha = 0.3)
+                }
               }
               
             }else if(band == "tcg"){
               
-              nirBand = paste0("nir",samp)
-              greenBand = paste0("grn",samp)
-              blueBand = paste0("blue",samp)
-              redBand = paste0("red",samp)
-              swir1Band = paste0("swir1",samp)
-              swir2Band = paste0("swir2",samp)
+              nirBand = paste0("nir",theSamp)
+              greenBand = paste0("grn",theSamp)
+              blueBand = paste0("blue",theSamp)
+              redBand = paste0("red",theSamp)
+              swir1Band = paste0("swir1",theSamp)
+              swir2Band = paste0("swir2",theSamp)
               
               nir = inData()$LS_dat[[nirBand]]/10000
               swir1 = inData()$LS_dat[[swir1Band]]/10000
@@ -1005,13 +1170,34 @@ server <- function(input, output, session) {
               dt = data.table(date = strptime(inData()$LS_dat$date,format="%Y%j"), 
                               tcg = tcg,
                               doy = yday(strptime(inData()$LS_dat$date,format="%Y%j")))
-              
+              if(hasCoefs){
+                nir = synthLS$nir/10000
+                swir1 = synthLS$swir1/10000
+                swir2 = synthLS$swir2/10000
+                green = synthLS$green/10000
+                blue = synthLS$blue/10000
+                red = synthLS$red/10000
+                
+                # additional information for determining wetlands, thanks to
+                # http://www.sciencedirect.com/science/article/pii/S003442571300388X Huang et al 2014 RSE
+                # coefficients from
+                # http://www.sciencedirect.com/science/article/pii/0034425785901026 Crist et al 1985 RSE
+                
+                tcg = coefB*blue + coefG*green + coefR*red + coefN*nir + coefS1*swir1 + coefS2*swir2
+                sdt = data.table(date = strptime(synthLS$date,format="%Y-%m-%d"), 
+                                 tcg = tcg,
+                                 doy = yday(strptime(synthLS$date,format="%Y-%m-%d")))
+              }
               
               if(input$LSplotType == "Years"){
                 theLSplot = ggplot(data = dt, aes(x=date, y=tcg)) + geom_point() +
                   theme_bw() + 
                   theme(axis.text = element_text(size = 14, face="bold")) +
-                  ylim(plotLimits)
+                  ylim(plotLimits)# + xlim(input$yearRange)
+                
+                if(hasCoefs){
+                  theLSplot = theLSplot + geom_line(data = sdt, aes(x=date,y=tcg), alpha = 0.3)
+                }
                 
                 
               }else if(input$LSplotType == "DoY"){
@@ -1020,16 +1206,19 @@ server <- function(input, output, session) {
                   theme(axis.text = element_text(size = 14, face="bold")) +
                   ylim(plotLimits)
                 
+                if(hasCoefs){
+                  theLSplot = theLSplot + geom_line(data = sdt, aes(x=doy,y=tcg), alpha = 0.3)
+                }
               }
               
             }else if(band == "tcw"){
               
-              nirBand = paste0("nir",samp)
-              greenBand = paste0("grn",samp)
-              blueBand = paste0("blue",samp)
-              redBand = paste0("red",samp)
-              swir1Band = paste0("swir1",samp)
-              swir2Band = paste0("swir2",samp)
+              nirBand = paste0("nir",theSamp)
+              greenBand = paste0("grn",theSamp)
+              blueBand = paste0("blue",theSamp)
+              redBand = paste0("red",theSamp)
+              swir1Band = paste0("swir1",theSamp)
+              swir2Band = paste0("swir2",theSamp)
               
               nir = inData()$LS_dat[[nirBand]]/10000
               swir1 = inData()$LS_dat[[swir1Band]]/10000
@@ -1057,12 +1246,35 @@ server <- function(input, output, session) {
                               tcw = tcw,
                               doy = yday(strptime(inData()$LS_dat$date,format="%Y%j")))
               
+              if(hasCoefs){
+                nir = synthLS$nir/10000
+                swir1 = synthLS$swir1/10000
+                swir2 = synthLS$swir2/10000
+                green = synthLS$green/10000
+                blue = synthLS$blue/10000
+                red = synthLS$red/10000
+                
+                # additional information for determining wetlands, thanks to
+                # http://www.sciencedirect.com/science/article/pii/S003442571300388X Huang et al 2014 RSE
+                # coefficients from
+                # http://www.sciencedirect.com/science/article/pii/0034425785901026 Crist et al 1985 RSE
+                
+                tcw = coefB*blue + coefG*green + coefR*red + coefN*nir + coefS1*swir1 + coefS2*swir2
+
+                sdt = data.table(date = strptime(synthLS$date,format="%Y-%m-%d"), 
+                                 tcw = tcw,
+                                 doy = yday(strptime(synthLS$date,format="%Y-%m-%d")))
+              }
               
               if(input$LSplotType == "Years"){
                 theLSplot = ggplot(data = dt, aes(x=date, y=tcw)) + geom_point() +
                   theme_bw() + 
                   theme(axis.text = element_text(size = 14, face="bold")) +
-                  ylim(plotLimits)
+                  ylim(plotLimits)# + xlim(input$yearRange)
+                
+                if(hasCoefs){
+                  theLSplot = theLSplot + geom_line(data = sdt, aes(x=date,y=tcw), alpha = 0.3)
+                }
                 
                 
               }else if(input$LSplotType == "DoY"){
@@ -1071,16 +1283,20 @@ server <- function(input, output, session) {
                   theme(axis.text = element_text(size = 14, face="bold")) +
                   ylim(plotLimits)
                 
+                if(hasCoefs){
+                  theLSplot = theLSplot + geom_line(data = sdt, aes(x=doy,y=tcw), alpha = 0.3)
+                }
+                
               }
               
             }else if(band == "tcw-tcg"){
               
-              nirBand = paste0("nir",samp)
-              greenBand = paste0("grn",samp)
-              blueBand = paste0("blue",samp)
-              redBand = paste0("red",samp)
-              swir1Band = paste0("swir1",samp)
-              swir2Band = paste0("swir2",samp)
+              nirBand = paste0("nir",theSamp)
+              greenBand = paste0("grn",theSamp)
+              blueBand = paste0("blue",theSamp)
+              redBand = paste0("red",theSamp)
+              swir1Band = paste0("swir1",theSamp)
+              swir2Band = paste0("swir2",theSamp)
               
               nir = inData()$LS_dat[[nirBand]]/10000
               swir1 = inData()$LS_dat[[swir1Band]]/10000
@@ -1122,12 +1338,54 @@ server <- function(input, output, session) {
                               tcwgd = tcwgd,
                               doy = yday(strptime(inData()$LS_dat$date,format="%Y%j")))
               
+              if(hasCoefs){
+                nir = synthLS$nir/10000
+                swir1 = synthLS$swir1/10000
+                swir2 = synthLS$swir2/10000
+                green = synthLS$green/10000
+                blue = synthLS$blue/10000
+                red = synthLS$red/10000
+                
+                # additional information for determining wetlands, thanks to
+                # http://www.sciencedirect.com/science/article/pii/S003442571300388X Huang et al 2014 RSE
+                # coefficients from
+                # http://www.sciencedirect.com/science/article/pii/0034425785901026 Crist et al 1985 RSE
+                
+                # wetness
+                coefB = 0.0315
+                coefG = 0.2021
+                coefR = 0.3102
+                coefN = 0.1594
+                coefS1 = 0.6806
+                coefS2 = 0.6109
+                
+                tcw = coefB*blue + coefG*green + coefR*red + coefN*nir + coefS1*swir1 + coefS2*swir2
+                
+                # greenness
+                coefB = -0.1603
+                coefG = -0.2819
+                coefR = -0.4934
+                coefN = 0.7940
+                coefS1 = 0.0002
+                coefS2 = 0.1446
+                
+                tcg = coefB*blue + coefG*green + coefR*red + coefN*nir + coefS1*swir1 + coefS2*swir2
+                
+                tcwgd = tcw-tcg
+                
+                sdt = data.table(date = strptime(synthLS$date,format="%Y-%m-%d"), 
+                                 tcwgd = tcwgd,
+                                 doy = yday(strptime(synthLS$date,format="%Y-%m-%d")))
+              }
               
               if(input$LSplotType == "Years"){
                 theLSplot = ggplot(data = dt, aes(x=date, y=tcwgd)) + geom_point() +
                   theme_bw() + 
                   theme(axis.text = element_text(size = 14, face="bold")) +
-                  ylim(plotLimits)
+                  ylim(plotLimits)# + xlim(input$yearRange)
+                if(hasCoefs){
+                  theLSplot = theLSplot + geom_line(data = sdt, aes(x=date,y=tcwgd), alpha = 0.3)
+                }
                 
                 
               }else if(input$LSplotType == "DoY"){
@@ -1135,12 +1393,15 @@ server <- function(input, output, session) {
                   theme_bw() + 
                   theme(axis.text = element_text(size = 14, face="bold")) +
                   ylim(plotLimits)
+                if(hasCoefs){
+                  theLSplot = theLSplot + geom_line(data = sdt, aes(x=doy,y=tcwgd), alpha = 0.3)
+                }
                 
               }
               
             }else{
               
-              bandToPlot =paste0(band,samp)
+              bandToPlot =paste0(band,theSamp)
               
               dt = data.table(date = strptime(inData()$LS_dat$date,format="%Y%j"), 
                               val = inData()$LS_dat[[bandToPlot]], 
@@ -1149,18 +1410,36 @@ server <- function(input, output, session) {
               plotLimits = quantile(dt$val, c(0.01, 0.99), na.rm=T)
               
               
+              if(hasCoefs){
+                if(band=="grn")band="green"
+                
+                print(head(synthLS))
+                
+                sdt = data.table(date = strptime(synthLS$date, format="%Y-%m-%d"),
+                                 val = synthLS[[band]],
+                                 doy = yday(strptime(synthLS$date, format="%Y-%m-%d")))
+                
+                print(head(sdt))
+              }
+              
               if(input$LSplotType == "Years"){
                 theLSplot = ggplot(data = dt, aes(x=date, y=val)) + geom_point() + 
                   theme_bw() + 
                   theme(axis.text = element_text(size = 14, face="bold")) +
-                  ylim(plotLimits)
+                  ylim(plotLimits)# + xlim(input$yearRange)
+                
+                if(hasCoefs){
+                  theLSplot = theLSplot + geom_line(data = sdt, aes(x=date,y=val), alpha = 0.3)
+                }
                 
               }else if(input$LSplotType == "DoY"){
                 theLSplot = ggplot(data = dt, aes(x=doy, y=val)) + geom_point() + 
                   theme_bw() + 
                   theme(axis.text = element_text(size = 14, face="bold")) +
                   ylim(plotLimits)
-                
+                if(hasCoefs){
+                  theLSplot = theLSplot + geom_line(data = sdt, aes(x=doy,y=val), alpha = 0.3)
+                }
               }
               
             }
