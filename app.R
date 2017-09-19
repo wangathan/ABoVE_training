@@ -185,13 +185,19 @@ ui <- fluidPage(
    		  h3("Landsat data"),
    		  radioButtons(inputId = "LSband", label="LS Band", inline=T, 
    		               choices = c("blue", "grn", "red", "nir", "swir1", "swir2", "bt", "ndvi", "ndwi", "lswi", "evi-nbr", "tcb", "tcg", "tcw", "tcw-tcg")),
-   		 # column(width=6,
+   		  column(width=6,
    		         radioButtons(inputId = "LSplotType", label="Plot Type", inline=T, 
-   		               choices = c("Years", "DoY")),#),
-   		  #column(width=6,
-   		 #        sliderInput("yearRange", label = "Year Range", min = 1984, max = 2014, value = c(1984, 2014))),
+   		               choices = c("Years", "DoY"))),
+   		 column(width=6,
+   		         sliderInput("yearRange", label = "Year Range", min = 1984, max = 2014, value = c(1984, 2014))),
    		  plotOutput("LSplot", height=330)
    		),
+   		br(),
+   		br(),
+   		br(),
+   		br(),
+   		br(),
+   		br(),
    		fluidRow( # Console for data selection
    		  column(width = 4,
    		         radioButtons(inputId = "falseCol", label="Band Composite", choices=c("321","432"))),
@@ -931,26 +937,26 @@ server <- function(input, output, session) {
               }
                             
               if(input$LSplotType == "Years"){
-                theLSplot = ggplot(data = dtm, aes(x=date, y=value, color= variable)) + geom_point() +
+                theLSplot = ggplot(data = dtm[year(date) %in% seq(min(input$yearRange),max(input$yearRange)+1),], aes(x=date, y=value, color= variable)) + geom_point() +
                   theme_bw() + 
                   scale_color_manual("", values=c("evi" = "darkgreen", "nbr" = "red"), guide=F) +
                   theme(axis.text = element_text(size = 14, face="bold")) +
-                  ylim(plotLimits)# + xlim(input$yearRange)
+                  ylim(plotLimits) + xlim(strptime(paste0(c(as.character(min(input$yearRange)),as.character(max(input$yearRange)+1)),"-01-01"), "%Y-%m-%d"))
                 
                 if(hasCoefs){
-                  theLSplot = theLSplot + geom_line(data = synth_dtm, aes(x=date,y=value,color=variable), alpha = 0.3)
+                  theLSplot = theLSplot + geom_line(data = synth_dtm[year(date) %in% seq(min(input$yearRange),max(input$yearRange)+1),], aes(x=date,y=value,color=variable), alpha = 0.3)
                 }
                 
                 
               }else if(input$LSplotType == "DoY"){
-                theLSplot = ggplot(data = dtm, aes(x=doy, y=value, color= variable)) + geom_point() +
+                theLSplot = ggplot(data = dtm[year(date) %in% seq(min(input$yearRange),max(input$yearRange)+1),], aes(x=doy, y=value, color= variable)) + geom_point() +
                   theme_bw() + 
                   scale_color_manual("", values=c("evi" = "darkgreen", "nbr" = "red"), guide=F) +
                   theme(axis.text = element_text(size = 14, face="bold")) +
                   ylim(plotLimits)
                 
                 if(hasCoefs){
-                  theLSplot = theLSplot + geom_line(data = synth_dtm, aes(x=doy,y=value,color=variable), alpha=0.3)
+                  theLSplot = theLSplot + geom_line(data = synth_dtm[year(date) %in% seq(min(input$yearRange),max(input$yearRange)+1),], aes(x=doy,y=value,color=variable), alpha=0.3)
                 }
               }
               
@@ -985,24 +991,24 @@ server <- function(input, output, session) {
               
               
               if(input$LSplotType == "Years"){
-                theLSplot = ggplot(data = dt, aes(x=date, y=ndwi)) + geom_point() +
+                theLSplot = ggplot(data = dt[year(date) %in% seq(min(input$yearRange),max(input$yearRange)+1),], aes(x=date, y=ndwi)) + geom_point() +
                   theme_bw() + 
                   theme(axis.text = element_text(size = 14, face="bold")) +
-                  ylim(plotLimits)# + xlim(input$yearRange)
+                  ylim(plotLimits) + xlim(strptime(paste0(c(as.character(min(input$yearRange)),as.character(max(input$yearRange)+1)),"-01-01"), "%Y-%m-%d"))
                 
                 if(hasCoefs){
                   print(head(sdt))
-                  theLSplot = theLSplot + geom_line(data = sdt, aes(x=date,y=ndwi), alpha = 0.3)
+                  theLSplot = theLSplot + geom_line(data = sdt[year(date) %in% seq(min(input$yearRange),max(input$yearRange)+1),], aes(x=date,y=ndwi), alpha = 0.3)
                 }
                 
               }else if(input$LSplotType == "DoY"){
-                theLSplot = ggplot(data = dt, aes(x=doy, y=ndwi)) + geom_point() +
+                theLSplot = ggplot(data = dt[year(date) %in% seq(min(input$yearRange),max(input$yearRange)+1),], aes(x=doy, y=ndwi)) + geom_point() +
                   theme_bw() + 
                   theme(axis.text = element_text(size = 14, face="bold")) +
                   ylim(plotLimits)
                 
                 if(hasCoefs){
-                  theLSplot = theLSplot + geom_line(data = sdt, aes(x=doy,y=ndwi), alpha = 0.3)
+                  theLSplot = theLSplot + geom_line(data = sdt[year(date) %in% seq(min(input$yearRange),max(input$yearRange)+1),], aes(x=doy,y=ndwi), alpha = 0.3)
                 }
                 
               }
@@ -1040,23 +1046,23 @@ server <- function(input, output, session) {
               
               
               if(input$LSplotType == "Years"){
-                theLSplot = ggplot(data = dt, aes(x=date, y=lswi)) + geom_point() +
+                theLSplot = ggplot(data = dt[year(date) %in% seq(min(input$yearRange),max(input$yearRange)+1),], aes(x=date, y=lswi)) + geom_point() +
                   theme_bw() + 
                   theme(axis.text = element_text(size = 14, face="bold")) +
-                  ylim(plotLimits)# + xlim(input$yearRange)
+                  ylim(plotLimits) + xlim(strptime(paste0(c(as.character(min(input$yearRange)),as.character(max(input$yearRange)+1)),"-01-01"), "%Y-%m-%d"))
                 
                 if(hasCoefs){
-                  theLSplot = theLSplot + geom_line(data = sdt, aes(x=date,y=lswi), alpha = 0.3)
+                  theLSplot = theLSplot + geom_line(data = sdt[year(date) %in% seq(min(input$yearRange),max(input$yearRange)+1),], aes(x=date,y=lswi), alpha = 0.3)
                 }
                 
               }else if(input$LSplotType == "DoY"){
-                theLSplot = ggplot(data = dt, aes(x=doy, y=lswi)) + geom_point() +
+                theLSplot = ggplot(data = dt[year(date) %in% seq(min(input$yearRange),max(input$yearRange)+1),], aes(x=doy, y=lswi)) + geom_point() +
                   theme_bw() + 
                   theme(axis.text = element_text(size = 14, face="bold")) +
                   ylim(plotLimits)
                 
                 if(hasCoefs){
-                  theLSplot = theLSplot + geom_line(data = sdt, aes(x=doy,y=lswi), alpha = 0.3)
+                  theLSplot = theLSplot + geom_line(data = sdt[year(date) %in% seq(min(input$yearRange),max(input$yearRange)+1),], aes(x=doy,y=lswi), alpha = 0.3)
                 }
               }
               
@@ -1116,23 +1122,23 @@ server <- function(input, output, session) {
               
               
               if(input$LSplotType == "Years"){
-                theLSplot = ggplot(data = dt, aes(x=date, y=tcb)) + geom_point() +
+                theLSplot = ggplot(data = dt[year(date) %in% seq(min(input$yearRange),max(input$yearRange)+1),], aes(x=date, y=tcb)) + geom_point() +
                   theme_bw() + 
                   theme(axis.text = element_text(size = 14, face="bold")) +
-                  ylim(plotLimits)# + xlim(input$yearRange)
+                  ylim(plotLimits) + xlim(strptime(paste0(c(as.character(min(input$yearRange)),as.character(max(input$yearRange)+1)),"-01-01"), "%Y-%m-%d"))
                 
                 if(hasCoefs){
-                  theLSplot = theLSplot + geom_line(data = sdt, aes(x=date,y=tcb), alpha = 0.3)
+                  theLSplot = theLSplot + geom_line(data = sdt[year(date) %in% seq(min(input$yearRange),max(input$yearRange)+1),], aes(x=date,y=tcb), alpha = 0.3)
                 }
                 
               }else if(input$LSplotType == "DoY"){
-                theLSplot = ggplot(data = dt, aes(x=doy, y=tcb)) + geom_point() +
+                theLSplot = ggplot(data = dt[year(date) %in% seq(min(input$yearRange),max(input$yearRange)+1),], aes(x=doy, y=tcb)) + geom_point() +
                   theme_bw() + 
                   theme(axis.text = element_text(size = 14, face="bold")) +
                   ylim(plotLimits)
                 
                 if(hasCoefs){
-                  theLSplot = theLSplot + geom_line(data = sdt, aes(x=doy,y=tcb), alpha = 0.3)
+                  theLSplot = theLSplot + geom_line(data = sdt[year(date) %in% seq(min(input$yearRange),max(input$yearRange)+1),], aes(x=doy,y=tcb), alpha = 0.3)
                 }
               }
               
@@ -1190,24 +1196,24 @@ server <- function(input, output, session) {
               }
               
               if(input$LSplotType == "Years"){
-                theLSplot = ggplot(data = dt, aes(x=date, y=tcg)) + geom_point() +
+                theLSplot = ggplot(data = dt[year(date) %in% seq(min(input$yearRange),max(input$yearRange)+1),], aes(x=date, y=tcg)) + geom_point() +
                   theme_bw() + 
                   theme(axis.text = element_text(size = 14, face="bold")) +
-                  ylim(plotLimits)# + xlim(input$yearRange)
+                  ylim(plotLimits) + xlim(strptime(paste0(c(as.character(min(input$yearRange)),as.character(max(input$yearRange)+1)),"-01-01"), "%Y-%m-%d"))
                 
                 if(hasCoefs){
-                  theLSplot = theLSplot + geom_line(data = sdt, aes(x=date,y=tcg), alpha = 0.3)
+                  theLSplot = theLSplot + geom_line(data = sdt[year(date) %in% seq(min(input$yearRange),max(input$yearRange)+1),], aes(x=date,y=tcg), alpha = 0.3)
                 }
                 
                 
               }else if(input$LSplotType == "DoY"){
-                theLSplot = ggplot(data = dt, aes(x=doy, y=tcg)) + geom_point() +
+                theLSplot = ggplot(data = dt[year(date) %in% seq(min(input$yearRange),max(input$yearRange)+1),], aes(x=doy, y=tcg)) + geom_point() +
                   theme_bw() + 
                   theme(axis.text = element_text(size = 14, face="bold")) +
                   ylim(plotLimits)
                 
                 if(hasCoefs){
-                  theLSplot = theLSplot + geom_line(data = sdt, aes(x=doy,y=tcg), alpha = 0.3)
+                  theLSplot = theLSplot + geom_line(data = sdt[year(date) %in% seq(min(input$yearRange),max(input$yearRange)+1),], aes(x=doy,y=tcg), alpha = 0.3)
                 }
               }
               
@@ -1267,24 +1273,24 @@ server <- function(input, output, session) {
               }
               
               if(input$LSplotType == "Years"){
-                theLSplot = ggplot(data = dt, aes(x=date, y=tcw)) + geom_point() +
+                theLSplot = ggplot(data = dt[year(date) %in% seq(min(input$yearRange),max(input$yearRange)+1),], aes(x=date, y=tcw)) + geom_point() +
                   theme_bw() + 
                   theme(axis.text = element_text(size = 14, face="bold")) +
-                  ylim(plotLimits)# + xlim(input$yearRange)
+                  ylim(plotLimits) + xlim(strptime(paste0(c(as.character(min(input$yearRange)),as.character(max(input$yearRange)+1)),"-01-01"), "%Y-%m-%d"))
                 
                 if(hasCoefs){
-                  theLSplot = theLSplot + geom_line(data = sdt, aes(x=date,y=tcw), alpha = 0.3)
+                  theLSplot = theLSplot + geom_line(data = sdt[year(date) %in% seq(min(input$yearRange),max(input$yearRange)+1),], aes(x=date,y=tcw), alpha = 0.3)
                 }
                 
                 
               }else if(input$LSplotType == "DoY"){
-                theLSplot = ggplot(data = dt, aes(x=doy, y=tcw)) + geom_point() +
+                theLSplot = ggplot(data = dt[year(date) %in% seq(min(input$yearRange),max(input$yearRange)+1),], aes(x=doy, y=tcw)) + geom_point() +
                   theme_bw() + 
                   theme(axis.text = element_text(size = 14, face="bold")) +
                   ylim(plotLimits)
                 
                 if(hasCoefs){
-                  theLSplot = theLSplot + geom_line(data = sdt, aes(x=doy,y=tcw), alpha = 0.3)
+                  theLSplot = theLSplot + geom_line(data = sdt[year(date) %in% seq(min(input$yearRange),max(input$yearRange)+1),], aes(x=doy,y=tcw), alpha = 0.3)
                 }
                 
               }
@@ -1379,22 +1385,22 @@ server <- function(input, output, session) {
               }
               
               if(input$LSplotType == "Years"){
-                theLSplot = ggplot(data = dt, aes(x=date, y=tcwgd)) + geom_point() +
+                theLSplot = ggplot(data = dt[year(date) %in% seq(min(input$yearRange),max(input$yearRange)+1),], aes(x=date, y=tcwgd)) + geom_point() +
                   theme_bw() + 
                   theme(axis.text = element_text(size = 14, face="bold")) +
-                  ylim(plotLimits)# + xlim(input$yearRange)
+                  ylim(plotLimits) + xlim(strptime(paste0(c(as.character(min(input$yearRange)),as.character(max(input$yearRange)+1)),"-01-01"), "%Y-%m-%d"))
                 if(hasCoefs){
-                  theLSplot = theLSplot + geom_line(data = sdt, aes(x=date,y=tcwgd), alpha = 0.3)
+                  theLSplot = theLSplot + geom_line(data = sdt[year(date) %in% seq(min(input$yearRange),max(input$yearRange)+1),], aes(x=date,y=tcwgd), alpha = 0.3)
                 }
                 
                 
               }else if(input$LSplotType == "DoY"){
-                theLSplot = ggplot(data = dt, aes(x=doy, y=tcwgd)) + geom_point() +
+                theLSplot = ggplot(data = dt[year(date) %in% seq(min(input$yearRange),max(input$yearRange)+1),], aes(x=doy, y=tcwgd)) + geom_point() +
                   theme_bw() + 
                   theme(axis.text = element_text(size = 14, face="bold")) +
                   ylim(plotLimits)
                 if(hasCoefs){
-                  theLSplot = theLSplot + geom_line(data = sdt, aes(x=doy,y=tcwgd), alpha = 0.3)
+                  theLSplot = theLSplot + geom_line(data = sdt[year(date) %in% seq(min(input$yearRange),max(input$yearRange)+1),], aes(x=doy,y=tcwgd), alpha = 0.3)
                 }
                 
               }
@@ -1423,22 +1429,22 @@ server <- function(input, output, session) {
               }
               
               if(input$LSplotType == "Years"){
-                theLSplot = ggplot(data = dt, aes(x=date, y=val)) + geom_point() + 
+                theLSplot = ggplot(data = dt[year(date) %in% seq(min(input$yearRange),max(input$yearRange)+1),], aes(x=date, y=val)) + geom_point() + 
                   theme_bw() + 
                   theme(axis.text = element_text(size = 14, face="bold")) +
-                  ylim(plotLimits)# + xlim(input$yearRange)
+                  ylim(plotLimits) + xlim(strptime(paste0(c(as.character(min(input$yearRange)),as.character(max(input$yearRange)+1)),"-01-01"), "%Y-%m-%d"))
                 
                 if(hasCoefs){
-                  theLSplot = theLSplot + geom_line(data = sdt, aes(x=date,y=val), alpha = 0.3)
+                  theLSplot = theLSplot + geom_line(data = sdt[year(date) %in% seq(min(input$yearRange),max(input$yearRange)+1),], aes(x=date,y=val), alpha = 0.3)
                 }
                 
               }else if(input$LSplotType == "DoY"){
-                theLSplot = ggplot(data = dt, aes(x=doy, y=val)) + geom_point() + 
+                theLSplot = ggplot(data = dt[year(date) %in% seq(min(input$yearRange),max(input$yearRange)+1),], aes(x=doy, y=val)) + geom_point() + 
                   theme_bw() + 
                   theme(axis.text = element_text(size = 14, face="bold")) +
                   ylim(plotLimits)
                 if(hasCoefs){
-                  theLSplot = theLSplot + geom_line(data = sdt, aes(x=doy,y=val), alpha = 0.3)
+                  theLSplot = theLSplot + geom_line(data = sdt[year(date) %in% seq(min(input$yearRange),max(input$yearRange)+1),], aes(x=doy,y=val), alpha = 0.3)
                 }
               }
               
