@@ -246,9 +246,9 @@ ui <- fluidPage(
 
 server <- function(input, output, session) {
 
-  setwd("F:/Dropbox/LCSC/ABoVE/ABoVE_training/")
+  #setwd("F:/Dropbox/LCSC/ABoVE/ABoVE_training/")
   #setwd("C:/Users/wanga/Dropbox/LCSC/ABoVE/buildTraining/")
-  #setwd("D:/Dropbox/LCSC/ABoVE/buildTraining/")
+  setwd("D:/Dropbox/LCSC/ABoVE/buildTraining/")
   #setwd("/Users/leticia/Dropbox/LCSC/ABoVE/buildTraining")
   
   availableTiles = reactive({
