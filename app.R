@@ -189,7 +189,7 @@ ui <- fluidPage(
    		         radioButtons(inputId = "LSplotType", label="Plot Type", inline=T, 
    		               choices = c("Years", "DoY"))),
    		 column(width=6,
-   		         sliderInput("yearRange", label = "Year Range", min = 1984, max = 2014, value = c(1984, 2014))),
+   		         sliderInput("yearRange", label = "Year Range", min = 1984, max = 2016, value = c(1984, 2016))),
    		  plotOutput("LSplot", height=330)
    		),
    		br(),
@@ -246,9 +246,9 @@ ui <- fluidPage(
 
 server <- function(input, output, session) {
 
-  #setwd("F:/Dropbox/LCSC/ABoVE/ABoVE_training/")
+  setwd("F:/Dropbox/LCSC/ABoVE/ABoVE_training/")
   #setwd("C:/Users/wanga/Dropbox/LCSC/ABoVE/buildTraining/")
-  setwd("D:/Dropbox/LCSC/ABoVE/buildTraining/")
+  #setwd("D:/Dropbox/LCSC/ABoVE/buildTraining/")
   #setwd("/Users/leticia/Dropbox/LCSC/ABoVE/buildTraining")
   
   availableTiles = reactive({
@@ -1581,11 +1581,11 @@ server <- function(input, output, session) {
         		
         		if(input$zoomChoice == "z321"){
         		    plotRGB(zoomTif,
-        		            r=3,g=2,b=1, stretch = "lin")
+        		            r=3,g=2,b=1)#, stretch = "lin")
         		}
         		if(input$zoomChoice == "z432"){
         		    plotRGB(zoomTif,
-        		            r=4,g=3,b=2, stretch = "lin")
+        		            r=4,g=3,b=2)#, stretch = "lin")
         		}
         		if(input$zoomChoice == "elev"){
         		  plotRGB(astertif,
