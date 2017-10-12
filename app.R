@@ -175,7 +175,7 @@ ui <- fluidPage(
 				  br(),
 				  radioButtons(inputId = "skipBox",
 				               label = "Why skip this label?",
-				               choices = list("Not Skip", "Insufficient Imagery","Mixed Pixel", "Unclear", "Misregistration", "Shadow", "I'm Lazy", "Other"))
+				               choices = list("Not Skip", "Insufficient Imagery","Mixed Pixel", "Unclear", "Misregistration", "I'm Lazy", "Other"))
 				)
 	   	)
 	   	),
@@ -246,9 +246,9 @@ ui <- fluidPage(
 
 server <- function(input, output, session) {
 
-  #setwd("F:/Dropbox/LCSC/ABoVE/ABoVE_training/")
+  setwd("F:/Dropbox/LCSC/ABoVE/ABoVE_training/")
   #setwd("C:/Users/wanga/Dropbox/LCSC/ABoVE/buildTraining/")
-  setwd("D:/Dropbox/LCSC/ABoVE/buildTraining/")
+  #setwd("D:/Dropbox/LCSC/ABoVE/buildTraining/")
   #setwd("/Users/leticia/Dropbox/LCSC/ABoVE/buildTraining")
   
   availableTiles = reactive({
@@ -874,9 +874,15 @@ server <- function(input, output, session) {
             # get synthetic data for sample, all models for that sample
             coefs_dt = fread(paste0("../../../ABoVE_samples/sample_coefs/",input$tilepick, "_sampled_coefs.csv"))
             sampleRows = coefs_dt[samp==theSamp,]
-            # for each sample, get the synthetic data of each time series
-            synthLS_l= lapply(1:nrow(sampleRows),function(i)getPredict(sampleRows[i,]))
-            synthLS = rbindlist(synthLS_l, use.names=T)
+            
+            if(nrow(sampleRows) != 0){
+              # for each sample, get the synthetic data of each time series
+              synthLS_l= lapply(1:nrow(sampleRows),function(i)getPredict(sampleRows[i,]))
+              synthLS = rbindlist(synthLS_l, use.names=T)
+            }else{
+              synthLS = NULL
+            }
+            
             
           }
 
@@ -912,7 +918,7 @@ server <- function(input, output, session) {
 
               # plotting synthetic data
               
-              if(hasCoefs){
+              if(hasCoefs & nrow(sampleRows) != 0){
                 nir = synthLS$nir/10000
                 swir = synthLS$swir2/10000
                 red = synthLS$red/10000
@@ -943,7 +949,7 @@ server <- function(input, output, session) {
                   theme(axis.text = element_text(size = 14, face="bold")) +
                   ylim(plotLimits) + xlim(strptime(paste0(c(as.character(min(input$yearRange)),as.character(max(input$yearRange)+1)),"-01-01"), "%Y-%m-%d"))
                 
-                if(hasCoefs){
+                if(hasCoefs & nrow(sampleRows) != 0){
                   theLSplot = theLSplot + geom_line(data = synth_dtm[year(date) %in% seq(min(input$yearRange),max(input$yearRange)+1),], aes(x=date,y=value,color=variable), alpha = 0.3)
                 }
                 
@@ -955,7 +961,7 @@ server <- function(input, output, session) {
                   theme(axis.text = element_text(size = 14, face="bold")) +
                   ylim(plotLimits)
                 
-                if(hasCoefs){
+                if(hasCoefs & nrow(sampleRows) != 0){
                   theLSplot = theLSplot + geom_line(data = synth_dtm[year(date) %in% seq(min(input$yearRange),max(input$yearRange)+1),], aes(x=doy,y=value,color=variable), alpha=0.3)
                 }
               }
@@ -978,7 +984,7 @@ server <- function(input, output, session) {
                               ndwi = ndwi,
                               doy = yday(strptime(inData()$LS_dat$date,format="%Y%j")))
 
-              if(hasCoefs){
+              if(hasCoefs & nrow(sampleRows) != 0){
                 nir = synthLS$nir/10000
                 green = synthLS$green/10000
                 
@@ -996,7 +1002,7 @@ server <- function(input, output, session) {
                   theme(axis.text = element_text(size = 14, face="bold")) +
                   ylim(plotLimits) + xlim(strptime(paste0(c(as.character(min(input$yearRange)),as.character(max(input$yearRange)+1)),"-01-01"), "%Y-%m-%d"))
                 
-                if(hasCoefs){
+                if(hasCoefs & nrow(sampleRows) != 0){
                   print(head(sdt))
                   theLSplot = theLSplot + geom_line(data = sdt[year(date) %in% seq(min(input$yearRange),max(input$yearRange)+1),], aes(x=date,y=ndwi), alpha = 0.3)
                 }
@@ -1007,7 +1013,7 @@ server <- function(input, output, session) {
                   theme(axis.text = element_text(size = 14, face="bold")) +
                   ylim(plotLimits)
                 
-                if(hasCoefs){
+                if(hasCoefs & nrow(sampleRows) != 0){
                   theLSplot = theLSplot + geom_line(data = sdt[year(date) %in% seq(min(input$yearRange),max(input$yearRange)+1),], aes(x=doy,y=ndwi), alpha = 0.3)
                 }
                 
@@ -1032,7 +1038,7 @@ server <- function(input, output, session) {
                               doy = yday(strptime(inData()$LS_dat$date,format="%Y%j")))
               
               
-              if(hasCoefs){
+              if(hasCoefs & nrow(sampleRows) != 0){
                 nir = synthLS$nir/10000
                 swir1 = synthLS$swir1/10000
                 
@@ -1051,7 +1057,7 @@ server <- function(input, output, session) {
                   theme(axis.text = element_text(size = 14, face="bold")) +
                   ylim(plotLimits) + xlim(strptime(paste0(c(as.character(min(input$yearRange)),as.character(max(input$yearRange)+1)),"-01-01"), "%Y-%m-%d"))
                 
-                if(hasCoefs){
+                if(hasCoefs & nrow(sampleRows) != 0){
                   theLSplot = theLSplot + geom_line(data = sdt[year(date) %in% seq(min(input$yearRange),max(input$yearRange)+1),], aes(x=date,y=lswi), alpha = 0.3)
                 }
                 
@@ -1061,7 +1067,7 @@ server <- function(input, output, session) {
                   theme(axis.text = element_text(size = 14, face="bold")) +
                   ylim(plotLimits)
                 
-                if(hasCoefs){
+                if(hasCoefs & nrow(sampleRows) != 0){
                   theLSplot = theLSplot + geom_line(data = sdt[year(date) %in% seq(min(input$yearRange),max(input$yearRange)+1),], aes(x=doy,y=lswi), alpha = 0.3)
                 }
               }
@@ -1101,7 +1107,7 @@ server <- function(input, output, session) {
                               tcb = tcb,
                               doy = yday(strptime(inData()$LS_dat$date,format="%Y%j")))
               
-              if(hasCoefs){
+              if(hasCoefs & nrow(sampleRows) != 0){
                 nir = synthLS$nir/10000
                 swir1 = synthLS$swir1/10000
                 swir2 = synthLS$swir2/10000
@@ -1127,7 +1133,7 @@ server <- function(input, output, session) {
                   theme(axis.text = element_text(size = 14, face="bold")) +
                   ylim(plotLimits) + xlim(strptime(paste0(c(as.character(min(input$yearRange)),as.character(max(input$yearRange)+1)),"-01-01"), "%Y-%m-%d"))
                 
-                if(hasCoefs){
+                if(hasCoefs & nrow(sampleRows) != 0){
                   theLSplot = theLSplot + geom_line(data = sdt[year(date) %in% seq(min(input$yearRange),max(input$yearRange)+1),], aes(x=date,y=tcb), alpha = 0.3)
                 }
                 
@@ -1137,7 +1143,7 @@ server <- function(input, output, session) {
                   theme(axis.text = element_text(size = 14, face="bold")) +
                   ylim(plotLimits)
                 
-                if(hasCoefs){
+                if(hasCoefs & nrow(sampleRows) != 0){
                   theLSplot = theLSplot + geom_line(data = sdt[year(date) %in% seq(min(input$yearRange),max(input$yearRange)+1),], aes(x=doy,y=tcb), alpha = 0.3)
                 }
               }
@@ -1176,7 +1182,7 @@ server <- function(input, output, session) {
               dt = data.table(date = strptime(inData()$LS_dat$date,format="%Y%j"), 
                               tcg = tcg,
                               doy = yday(strptime(inData()$LS_dat$date,format="%Y%j")))
-              if(hasCoefs){
+              if(hasCoefs & nrow(sampleRows) != 0){
                 nir = synthLS$nir/10000
                 swir1 = synthLS$swir1/10000
                 swir2 = synthLS$swir2/10000
@@ -1201,7 +1207,7 @@ server <- function(input, output, session) {
                   theme(axis.text = element_text(size = 14, face="bold")) +
                   ylim(plotLimits) + xlim(strptime(paste0(c(as.character(min(input$yearRange)),as.character(max(input$yearRange)+1)),"-01-01"), "%Y-%m-%d"))
                 
-                if(hasCoefs){
+                if(hasCoefs & nrow(sampleRows) != 0){
                   theLSplot = theLSplot + geom_line(data = sdt[year(date) %in% seq(min(input$yearRange),max(input$yearRange)+1),], aes(x=date,y=tcg), alpha = 0.3)
                 }
                 
@@ -1212,7 +1218,7 @@ server <- function(input, output, session) {
                   theme(axis.text = element_text(size = 14, face="bold")) +
                   ylim(plotLimits)
                 
-                if(hasCoefs){
+                if(hasCoefs & nrow(sampleRows) != 0){
                   theLSplot = theLSplot + geom_line(data = sdt[year(date) %in% seq(min(input$yearRange),max(input$yearRange)+1),], aes(x=doy,y=tcg), alpha = 0.3)
                 }
               }
@@ -1252,7 +1258,7 @@ server <- function(input, output, session) {
                               tcw = tcw,
                               doy = yday(strptime(inData()$LS_dat$date,format="%Y%j")))
               
-              if(hasCoefs){
+              if(hasCoefs & nrow(sampleRows) != 0){
                 nir = synthLS$nir/10000
                 swir1 = synthLS$swir1/10000
                 swir2 = synthLS$swir2/10000
@@ -1278,7 +1284,7 @@ server <- function(input, output, session) {
                   theme(axis.text = element_text(size = 14, face="bold")) +
                   ylim(plotLimits) + xlim(strptime(paste0(c(as.character(min(input$yearRange)),as.character(max(input$yearRange)+1)),"-01-01"), "%Y-%m-%d"))
                 
-                if(hasCoefs){
+                if(hasCoefs & nrow(sampleRows) != 0){
                   theLSplot = theLSplot + geom_line(data = sdt[year(date) %in% seq(min(input$yearRange),max(input$yearRange)+1),], aes(x=date,y=tcw), alpha = 0.3)
                 }
                 
@@ -1289,7 +1295,7 @@ server <- function(input, output, session) {
                   theme(axis.text = element_text(size = 14, face="bold")) +
                   ylim(plotLimits)
                 
-                if(hasCoefs){
+                if(hasCoefs & nrow(sampleRows) != 0){
                   theLSplot = theLSplot + geom_line(data = sdt[year(date) %in% seq(min(input$yearRange),max(input$yearRange)+1),], aes(x=doy,y=tcw), alpha = 0.3)
                 }
                 
@@ -1344,7 +1350,7 @@ server <- function(input, output, session) {
                               tcwgd = tcwgd,
                               doy = yday(strptime(inData()$LS_dat$date,format="%Y%j")))
               
-              if(hasCoefs){
+              if(hasCoefs & nrow(sampleRows) != 0){
                 nir = synthLS$nir/10000
                 swir1 = synthLS$swir1/10000
                 swir2 = synthLS$swir2/10000
@@ -1389,7 +1395,7 @@ server <- function(input, output, session) {
                   theme_bw() + 
                   theme(axis.text = element_text(size = 14, face="bold")) +
                   ylim(plotLimits) + xlim(strptime(paste0(c(as.character(min(input$yearRange)),as.character(max(input$yearRange)+1)),"-01-01"), "%Y-%m-%d"))
-                if(hasCoefs){
+                if(hasCoefs & nrow(sampleRows) != 0){
                   theLSplot = theLSplot + geom_line(data = sdt[year(date) %in% seq(min(input$yearRange),max(input$yearRange)+1),], aes(x=date,y=tcwgd), alpha = 0.3)
                 }
                 
@@ -1399,7 +1405,7 @@ server <- function(input, output, session) {
                   theme_bw() + 
                   theme(axis.text = element_text(size = 14, face="bold")) +
                   ylim(plotLimits)
-                if(hasCoefs){
+                if(hasCoefs & nrow(sampleRows) != 0){
                   theLSplot = theLSplot + geom_line(data = sdt[year(date) %in% seq(min(input$yearRange),max(input$yearRange)+1),], aes(x=doy,y=tcwgd), alpha = 0.3)
                 }
                 
@@ -1416,7 +1422,7 @@ server <- function(input, output, session) {
               plotLimits = quantile(dt$val, c(0.01, 0.99), na.rm=T)
               
               
-              if(hasCoefs){
+              if(hasCoefs & nrow(sampleRows) != 0){
                 if(band=="grn")band="green"
                 
                 print(head(synthLS))
@@ -1434,7 +1440,7 @@ server <- function(input, output, session) {
                   theme(axis.text = element_text(size = 14, face="bold")) +
                   ylim(plotLimits) + xlim(strptime(paste0(c(as.character(min(input$yearRange)),as.character(max(input$yearRange)+1)),"-01-01"), "%Y-%m-%d"))
                 
-                if(hasCoefs){
+                if(hasCoefs & nrow(sampleRows) != 0){
                   theLSplot = theLSplot + geom_line(data = sdt[year(date) %in% seq(min(input$yearRange),max(input$yearRange)+1),], aes(x=date,y=val), alpha = 0.3)
                 }
                 
@@ -1443,7 +1449,7 @@ server <- function(input, output, session) {
                   theme_bw() + 
                   theme(axis.text = element_text(size = 14, face="bold")) +
                   ylim(plotLimits)
-                if(hasCoefs){
+                if(hasCoefs & nrow(sampleRows) != 0){
                   theLSplot = theLSplot + geom_line(data = sdt[year(date) %in% seq(min(input$yearRange),max(input$yearRange)+1),], aes(x=doy,y=val), alpha = 0.3)
                 }
               }
