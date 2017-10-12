@@ -175,7 +175,7 @@ ui <- fluidPage(
 				  br(),
 				  radioButtons(inputId = "skipBox",
 				               label = "Why skip this label?",
-				               choices = list("Not Skip", "Insufficient Imagery","Mixed Pixel", "Unclear", "Misregistration", "I'm Lazy", "Other"))
+				               choices = list("Not Skip", "Insufficient Imagery","Mixed Pixel", "Unclear", "Shadow","Misregistration", "I'm Lazy", "Other"))
 				)
 	   	)
 	   	),
